@@ -57,7 +57,7 @@ struct TranscriptView: View {
                         .background(Color.gray.opacity(0.1))
                         .cornerRadius(6)
                         .frame(width: 150)
-                        .onChange(of: searchText) {
+                        .onChange(of: searchText) { _ in
                             updateHighlights()
                         }
                     }
@@ -115,7 +115,7 @@ struct TranscriptView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color(.systemBackground))
             
             Divider()
             
@@ -169,7 +169,7 @@ struct TranscriptView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-                .background(Color(NSColor.textBackgroundColor))
+                .background(Color(.systemBackground))
             }
         }
     }

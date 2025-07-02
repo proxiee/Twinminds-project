@@ -85,14 +85,19 @@ class AudioService: ObservableObject {
     
     private func requestMicrophonePermission() {
         logger.logInfo("🎤 Requesting microphone permission...")
-        AVAudioApplication.requestRecordPermission { [weak self] granted in
-            DispatchQueue.main.async {
-                self?.logger.logInfo("Microphone permission granted: \(granted)")
-                self?.microphonePermissionGranted = granted
-                if !granted {
-                    self?.logger.logWarning("Microphone permission denied")
-                } else {
-                    self?.logger.logSuccess("Microphone permission granted")
+        if #available(iOS 17.0, macOS 14.0, *) {
+            AVAudioApplication.requestRecordPermission { [weak self] granted in
+                DispatchQueue.main.async {
+                    self?.logger.logInfo("Microphone permission granted: \(granted)")
+                    self?.microphonePermissionGranted = granted
+                }
+            }
+        } else {
+            // Use AVAudioSession for iOS 15-16 compatibility
+            AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
+                DispatchQueue.main.async {
+                    self?.logger.logInfo("Microphone permission granted: \(granted)")
+                    self?.microphonePermissionGranted = granted
                 }
             }
         }
@@ -593,7 +598,8 @@ class AudioService: ObservableObject {
     }
     
     private func convertWithFFmpeg(inputURL: URL, outputURL: URL) -> Bool {
-        // Check if ffmpeg is available
+        #if os(macOS)
+        // Check if ffmpeg is available (only on macOS)
         let task = Process()
         task.launchPath = "/usr/bin/which"
         task.arguments = ["ffmpeg"]
@@ -631,6 +637,11 @@ class AudioService: ObservableObject {
             logger.logError("Error running ffmpeg", error: error)
             return false
         }
+        #else
+        // Process is not available on iOS
+        logger.logInfo("ffmpeg not available on iOS, using native conversion")
+        return false
+        #endif
     }
     
     private func convertWithAVFoundation(inputURL: URL, outputURL: URL) {

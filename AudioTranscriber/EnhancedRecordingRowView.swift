@@ -33,65 +33,77 @@ struct EnhancedRecordingRowView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 // Waveform icon
                 ZStack {
                     Circle()
                         .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.gray.opacity(0.1))
-                        .frame(width: 48, height: 48)
+                        .frame(width: 40, height: 40)
                     
                     Image(systemName: isCurrentlyPlaying ? "waveform" : "waveform.circle")
-                        .font(.title3)
+                        .font(.system(size: 18))
                         .foregroundColor(isSelected ? .accentColor : .secondary)
-                        .symbolEffect(.pulse, isActive: isCurrentlyPlaying)
+                        // .symbolEffect(.pulse, isActive: isCurrentlyPlaying) // iOS 17+ only
                 }
                 
                 // File info
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(cleanFileName(file.lastPathComponent))
-                        .font(.system(.body, design: .rounded, weight: .medium))
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundColor(.primary)
                         .lineLimit(1)
                     
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Text(formatFileDate(file))
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                         
                         Text("•")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                         
                         Text(fileDuration)
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                         
-                        if !fileSize.isEmpty {
+                        #if os(iOS)
+                        // Hide file size on iPhone to save space
+                        if UIDevice.current.userInterfaceIdiom != .phone && !fileSize.isEmpty {
                             Text("•")
-                                .font(.caption)
+                                .font(.caption2)
                                 .foregroundColor(.secondary)
                             
                             Text(fileSize)
-                                .font(.caption)
+                                .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
+                        #else
+                        if !fileSize.isEmpty {
+                            Text("•")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            
+                            Text(fileSize)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        #endif
                     }
                 }
                 
-                Spacer()
+                Spacer(minLength: 8)
                 
                 // Actions
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     // Play/Pause button
                     Button(action: {
                         togglePlayback()
                     }) {
                         Image(systemName: isCurrentlyPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.title2)
+                            .font(.title3)
                             .foregroundColor(.accentColor)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .opacity(isHovered || isSelected ? 1.0 : 0.7)
                     
                     // More options menu
                     Menu {
@@ -104,11 +116,13 @@ struct EnhancedRecordingRowView: View {
                         
                         Divider()
                         
+                        #if os(macOS)
                         Button(action: {
                             showInFinder()
                         }) {
                             Label("Show in Finder", systemImage: "folder")
                         }
+                        #endif
                         
                         Button(action: {
                             shareFile()
@@ -125,15 +139,14 @@ struct EnhancedRecordingRowView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .font(.title3)
+                            .font(.system(size: 18))
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .opacity(isHovered || isSelected ? 1.0 : 0.3)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isSelected ? Color.accentColor.opacity(0.08) : Color.clear)
@@ -142,11 +155,13 @@ struct EnhancedRecordingRowView: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
             )
+            #if os(macOS)
             .onHover { hovering in
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isHovered = hovering
                 }
             }
+            #endif
             .onTapGesture {
                 selectFile()
             }
@@ -161,9 +176,11 @@ struct EnhancedRecordingRowView: View {
                 
                 Divider()
                 
+                #if os(macOS)
                 Button("Show in Finder") {
                     showInFinder()
                 }
+                #endif
                 
                 Button("Share") {
                     shareFile()

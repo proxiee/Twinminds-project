@@ -1,9 +1,5 @@
 import SwiftUI
-import SwiftData
 import Speech
-#if os(macOS)
-import AppKit
-#endif
 
 struct ContentView: View {
     @StateObject private var audioService = AudioService()
@@ -186,10 +182,24 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showingRecordings) {
-            NavigationStack {
+            #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                // iPhone - use full screen navigation
+                RecordingsListView(audioService: audioService, recordedFiles: $recordedFiles)
+            } else {
+                // iPad - use navigation view with size constraints
+                NavigationView {
+                    RecordingsListView(audioService: audioService, recordedFiles: $recordedFiles)
+                }
+                .frame(minWidth: 800, minHeight: 600)
+            }
+            #else
+            // macOS - use navigation view with larger size
+            NavigationView {
                 RecordingsListView(audioService: audioService, recordedFiles: $recordedFiles)
             }
             .frame(minWidth: 1000, minHeight: 700)
+            #endif
         }
     }
     

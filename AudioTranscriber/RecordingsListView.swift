@@ -29,10 +29,11 @@ struct RecordingsListView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: 0) {
-                // Left side - Recordings list
+            #if os(iOS)
+            // Mobile layout - use tabs or navigation for better UX
+            if UIDevice.current.userInterfaceIdiom == .phone {
                 VStack(spacing: 0) {
-                    // Header with close button
+                    // Header
                     HStack {
                         Text("Recordings")
                             .font(.title2)
@@ -44,8 +45,6 @@ struct RecordingsListView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
-                        Spacer().frame(width: 16)
-                        
                         Button(action: {
                             stopPlayback()
                             dismiss()
@@ -55,145 +54,126 @@ struct RecordingsListView: View {
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .help("Close (ESC)")
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .background(Color(NSColor.controlBackgroundColor))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(.secondarySystemBackground))
                     
-                    Divider()
-                    
-                    // Recordings list
-                    if recordedFiles.isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "waveform.circle")
-                                .font(.system(size: 64))
-                                .foregroundColor(.gray.opacity(0.5))
-                            
-                            Text("No recordings yet")
-                                .font(.title3)
-                                .foregroundColor(.gray)
-                            
-                            Text("Start recording to see your audio files here")
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: 1) {
-                                ForEach(recordedFiles, id: \.self) { file in
-                                    EnhancedRecordingRowView(
-                                        file: file,
-                                        audioService: audioService,
-                                        selectedFile: $selectedFile,
-                                        selectedFileTranscription: $selectedFileTranscription,
-                                        isTranscribingFile: $isTranscribingFile,
-                                        isPlaying: $isPlaying,
-                                        audioPlayer: $audioPlayer,
-                                        currentTime: $currentTime,
-                                        duration: $duration,
-                                        playbackTimer: $playbackTimer,
-                                        recordedFiles: $recordedFiles,
-                                        onFileSelected: { selectedFile in
-                                            loadTranscriptForFile(selectedFile)
-                                        }
-                                    )
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                    }
-                }
-                .frame(width: geometry.size.width * 0.45)
-                .background(Color(NSColor.windowBackgroundColor))
-                
-                Divider()
-                
-                // Right side - Player and transcript
-                VStack(spacing: 0) {
-                    if let selectedFile = selectedFile {
-                        // Player header
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Now Playing")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                    if selectedFile == nil {
+                        // Show recordings list when no file is selected
+                        if recordedFiles.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "waveform.circle")
+                                    .font(.system(size: 64))
+                                    .foregroundColor(.gray.opacity(0.5))
                                 
-                                Text(selectedFile.lastPathComponent.replacingOccurrences(of: ".caf", with: ""))
-                                    .font(.headline)
-                                    .lineLimit(1)
-                            }
-                            
-                            Spacer()
-                            
-                            Button(action: { 
-                                self.selectedFile = nil 
-                                stopPlayback()
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
+                                Text("No recordings yet")
                                     .font(.title3)
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        
-                        Divider()
-                        
-                        // Audio player controls
-                        AudioPlayerView(
-                            isPlaying: $isPlaying,
-                            currentTime: $currentTime,
-                            duration: $duration,
-                            audioPlayer: audioPlayer,
-                            onSeek: { time in
-                                audioPlayer?.currentTime = time
-                                currentTime = time
-                            }
-                        )
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        
-                        Divider()
-                        
-                        // Transcript section
-                        TranscriptView(
-                            selectedFile: selectedFile,
-                            transcription: selectedFileTranscription,
-                            isTranscribing: isTranscribingFile,
-                            audioService: audioService,
-                            onTranscribe: {
-                                transcribeSelectedFile()
-                            }
-                        )
-                    } else {
-                        // Empty state
-                        VStack(spacing: 24) {
-                            Image(systemName: "music.note")
-                                .font(.system(size: 80))
-                                .foregroundColor(.gray.opacity(0.3))
-                            
-                            VStack(spacing: 8) {
-                                Text("Select a recording")
-                                    .font(.title2)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(.gray)
                                 
-                                Text("Choose a recording from the list to play and view its transcript")
+                                Text("Start recording to see your audio files here")
                                     .font(.body)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
+                                LazyVStack(spacing: 8) {
+                                    ForEach(recordedFiles, id: \.self) { file in
+                                        EnhancedRecordingRowView(
+                                            file: file,
+                                            audioService: audioService,
+                                            selectedFile: $selectedFile,
+                                            selectedFileTranscription: $selectedFileTranscription,
+                                            isTranscribingFile: $isTranscribingFile,
+                                            isPlaying: $isPlaying,
+                                            audioPlayer: $audioPlayer,
+                                            currentTime: $currentTime,
+                                            duration: $duration,
+                                            playbackTimer: $playbackTimer,
+                                            recordedFiles: $recordedFiles,
+                                            onFileSelected: { selectedFile in
+                                                loadTranscriptForFile(selectedFile)
+                                            }
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                            }
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        // Show player when file is selected
+                        VStack(spacing: 0) {
+                            // Back button and file info
+                            HStack {
+                                Button(action: {
+                                    selectedFile = nil
+                                    stopPlayback()
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "chevron.left")
+                                        Text("Back")
+                                    }
+                                    .font(.body)
+                                    .foregroundColor(.accentColor)
+                                }
+                                
+                                Spacer()
+                                
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text("Now Playing")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text(selectedFile!.lastPathComponent.replacingOccurrences(of: ".caf", with: ""))
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color(.secondarySystemBackground))
+                            
+                            Divider()
+                            
+                            // Audio player controls
+                            AudioPlayerView(
+                                isPlaying: $isPlaying,
+                                currentTime: $currentTime,
+                                duration: $duration,
+                                audioPlayer: audioPlayer,
+                                onSeek: { time in
+                                    audioPlayer?.currentTime = time
+                                    currentTime = time
+                                }
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            
+                            Divider()
+                            
+                            // Transcript section
+                            TranscriptView(
+                                selectedFile: selectedFile!,
+                                transcription: selectedFileTranscription,
+                                isTranscribing: isTranscribingFile,
+                                audioService: audioService,
+                                onTranscribe: {
+                                    transcribeSelectedFile()
+                                }
+                            )
+                        }
                     }
                 }
-                .frame(width: geometry.size.width * 0.55)
-                .background(Color(NSColor.windowBackgroundColor))
+            } else {
+                // iPad layout - use side-by-side
+                tabletLayout(geometry: geometry)
             }
+            #else
+            // macOS layout
+            tabletLayout(geometry: geometry)
+            #endif
         }
         .onDisappear {
             stopPlayback()
@@ -202,10 +182,176 @@ struct RecordingsListView: View {
             // Refresh recordings when view appears
             recordedFiles = audioService.getRecordedFiles()
         }
-        .onKeyPress(.escape) {
-            stopPlayback()
-            dismiss()
-            return .handled
+        // .onKeyPress(.escape) - iOS 17+ only
+    }
+    
+    // Tablet/Desktop layout function
+    @ViewBuilder
+    private func tabletLayout(geometry: GeometryProxy) -> some View {
+        HStack(spacing: 0) {
+            // Left side - Recordings list
+            VStack(spacing: 0) {
+                // Header with close button
+                HStack {
+                    Text("Recordings")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Spacer()
+                    
+                    Text("\(recordedFiles.count) files")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer().frame(width: 16)
+                    
+                    Button(action: {
+                        stopPlayback()
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Close (ESC)")
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(Color(.secondarySystemBackground))
+                
+                Divider()
+                
+                // Recordings list
+                if recordedFiles.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "waveform.circle")
+                            .font(.system(size: 64))
+                            .foregroundColor(.gray.opacity(0.5))
+                        
+                        Text("No recordings yet")
+                            .font(.title3)
+                            .foregroundColor(.gray)
+                        
+                        Text("Start recording to see your audio files here")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 1) {
+                            ForEach(recordedFiles, id: \.self) { file in
+                                EnhancedRecordingRowView(
+                                    file: file,
+                                    audioService: audioService,
+                                    selectedFile: $selectedFile,
+                                    selectedFileTranscription: $selectedFileTranscription,
+                                    isTranscribingFile: $isTranscribingFile,
+                                    isPlaying: $isPlaying,
+                                    audioPlayer: $audioPlayer,
+                                    currentTime: $currentTime,
+                                    duration: $duration,
+                                    playbackTimer: $playbackTimer,
+                                    recordedFiles: $recordedFiles,
+                                    onFileSelected: { selectedFile in
+                                        loadTranscriptForFile(selectedFile)
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+            }
+            .frame(width: geometry.size.width * 0.45)
+            .background(Color(.systemBackground))
+            
+            Divider()
+            
+            // Right side - Player and transcript
+            VStack(spacing: 0) {
+                if let selectedFile = selectedFile {
+                    // Player header
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Now Playing")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Text(selectedFile.lastPathComponent.replacingOccurrences(of: ".caf", with: ""))
+                                .font(.headline)
+                                .lineLimit(1)
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: { 
+                            self.selectedFile = nil 
+                            stopPlayback()
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(Color(.secondarySystemBackground))
+                    
+                    Divider()
+                    
+                    // Audio player controls
+                    AudioPlayerView(
+                        isPlaying: $isPlaying,
+                        currentTime: $currentTime,
+                        duration: $duration,
+                        audioPlayer: audioPlayer,
+                        onSeek: { time in
+                            audioPlayer?.currentTime = time
+                            currentTime = time
+                        }
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    
+                    Divider()
+                    
+                    // Transcript section
+                    TranscriptView(
+                        selectedFile: selectedFile,
+                        transcription: selectedFileTranscription,
+                        isTranscribing: isTranscribingFile,
+                        audioService: audioService,
+                        onTranscribe: {
+                            transcribeSelectedFile()
+                        }
+                    )
+                } else {
+                    // Empty state
+                    VStack(spacing: 24) {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 80))
+                            .foregroundColor(.gray.opacity(0.3))
+                        
+                        VStack(spacing: 8) {
+                            Text("Select a recording")
+                                .font(.title2)
+                                .foregroundColor(.primary)
+                            
+                            Text("Choose a recording from the list to play and view its transcript")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .frame(width: geometry.size.width * 0.55)
+            .background(Color(.systemBackground))
         }
     }
     

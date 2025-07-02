@@ -185,5 +185,5 @@ struct AudioPlayerView: View {
         onSeek: { _ in }
     )
     .padding()
-    .background(Color(NSColor.windowBackgroundColor))
+                .background(Color(.systemBackground))
 }
