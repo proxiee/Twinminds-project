@@ -2,6 +2,49 @@ import Foundation
 import AVFoundation
 import Speech
 
+// MARK: - Audio Segment Data Structures
+struct AudioSegment: Identifiable {
+    let id = UUID()
+    let url: URL
+    let startTime: TimeInterval
+    let duration: TimeInterval
+    var transcription: String?
+    var isTranscribing: Bool = false
+    var transcriptionCompleted: Bool = false
+    
+    var endTime: TimeInterval {
+        return startTime + duration
+    }
+}
+
+class SegmentedRecording: ObservableObject {
+    let id = UUID()
+    let startDate: Date
+    let baseFileName: String
+    
+    @Published var segments: [AudioSegment] = []
+    @Published var isRecording: Bool = false
+    @Published var totalDuration: TimeInterval = 0
+    @Published var combinedTranscription: String = ""
+    
+    init(baseFileName: String) {
+        self.startDate = Date()
+        self.baseFileName = baseFileName
+    }
+    
+    func addSegment(_ segment: AudioSegment) {
+        segments.append(segment)
+        totalDuration = segments.last?.endTime ?? 0
+    }
+    
+    func updateCombinedTranscription() {
+        combinedTranscription = segments
+            .sorted(by: { $0.startTime < $1.startTime })
+            .compactMap { $0.transcription }
+            .joined(separator: " ")
+    }
+}
+
 class AudioService: ObservableObject {
     private var audioEngine: AVAudioEngine?
     private var audioFile: AVAudioFile?
