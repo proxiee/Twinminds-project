@@ -4,12 +4,6 @@ import AVFoundation
 import AppKit
 #endif
 
-enum TranscriptStatus {
-    case notGenerated
-    case generating
-    case available
-    case failed
-}
 
 struct RecordingsListView: View {
     @ObservedObject var audioService: AudioService
@@ -25,6 +19,7 @@ struct RecordingsListView: View {
     @State private var playbackTimer: Timer?
     @State private var transcriptCache: [URL: String] = [:]
     @State private var transcriptStatus: [URL: TranscriptStatus] = [:]
+    @StateObject private var transcriptManager = TranscriptManager.shared
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -385,22 +380,16 @@ struct RecordingsListView: View {
     }
     
     private func loadTranscriptForFile(_ file: URL) {
-        // First check cache
-        if let cachedTranscript = transcriptCache[file] {
+        // Check if we have a cached transcript using TranscriptManager
+        if let cachedTranscript = transcriptManager.getTranscript(for: file) {
             selectedFileTranscription = cachedTranscript
             transcriptStatus[file] = .available
             return
         }
         
-        // Try to load from disk
-        if let savedTranscript = loadTranscriptFromDisk(file: file) {
-            transcriptCache[file] = savedTranscript
-            selectedFileTranscription = savedTranscript
-            transcriptStatus[file] = .available
-        } else {
-            selectedFileTranscription = ""
-            transcriptStatus[file] = .notGenerated
-        }
+        // No cached transcript available
+        selectedFileTranscription = ""
+        transcriptStatus[file] = .notGenerated
     }
     
     private func saveTranscriptToDisk(file: URL, transcript: String) {

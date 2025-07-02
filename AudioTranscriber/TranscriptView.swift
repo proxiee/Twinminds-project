@@ -4,7 +4,7 @@ import AppKit
 #endif
 
 struct TranscriptView: View {
-    let selectedFile: URL?
+    let selectedFile: URL
     let transcription: String
     let isTranscribing: Bool
     let audioService: AudioService
@@ -13,6 +13,11 @@ struct TranscriptView: View {
     @State private var searchText = ""
     @State private var showingShareSheet = false
     @State private var highlightedRanges: [Range<String.Index>] = []
+    @StateObject private var transcriptManager = TranscriptManager.shared
+    
+    private var hasTranscript: Bool {
+        transcriptManager.hasTranscript(for: selectedFile)
+    }
     
     var body: some View {
         VStack(spacing: 0) {

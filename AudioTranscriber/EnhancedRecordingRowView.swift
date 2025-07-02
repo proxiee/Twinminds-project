@@ -21,7 +21,10 @@ struct EnhancedRecordingRowView: View {
     
     @State private var fileSize: String = ""
     @State private var fileDuration: String = ""
-    @State private var isHovered = false
+    @State private var isExpanded: Bool = false
+    @State private var cachedTranscript: String = ""
+    @State private var hasTranscript: Bool = false
+    @StateObject private var transcriptManager = TranscriptManager.shared
     
     private var isSelected: Bool {
         selectedFile == file
@@ -195,6 +198,7 @@ struct EnhancedRecordingRowView: View {
         }
         .onAppear {
             loadFileInfo()
+            loadCachedTranscript()
         }
     }
     
@@ -247,15 +251,37 @@ struct EnhancedRecordingRowView: View {
     }
     
     private func selectFile() {
+        // If this file is already selected and playing, just pause
+        if isCurrentlyPlaying {
+            togglePlayback()
+            return
+        }
+        
+        // Stop any current playback first
+        audioPlayer?.stop()
+        playbackTimer?.invalidate()
+        
+        // Set selected file and start playback
         selectedFile = file
         onFileSelected(file)
+        
+        // Start playback automatically when selecting via row tap
+        togglePlayback()
     }
     
-    private func loadTranscriptionIfExists() {
-        // Check if we have a cached transcription
-        // This could be expanded to save/load transcriptions from disk
-        if selectedFile == file && !selectedFileTranscription.isEmpty {
-            return
+    private func loadCachedTranscript() {
+        // Load cached transcript using TranscriptManager
+        if let transcript = transcriptManager.getTranscript(for: file) {
+            cachedTranscript = transcript
+            hasTranscript = true
+            
+            // If this file is selected, update the displayed transcription
+            if selectedFile == file {
+                selectedFileTranscription = transcript
+            }
+        } else {
+            cachedTranscript = ""
+            hasTranscript = false
         }
     }
     
@@ -268,14 +294,31 @@ struct EnhancedRecordingRowView: View {
         } else {
             // Start new playback
             do {
-                // Stop any current playback
+                // Stop any current playback first
                 audioPlayer?.stop()
                 playbackTimer?.invalidate()
                 
-                audioPlayer = try AVAudioPlayer(contentsOf: file)
-                audioPlayer?.play()
-                isPlaying = true
+                // Set selected file first
                 selectedFile = file
+                
+                // Create and configure audio player
+                let player = try AVAudioPlayer(contentsOf: file)
+                
+                #if os(iOS)
+                // Configure audio session for iOS
+                do {
+                    try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+                    try AVAudioSession.sharedInstance().setActive(true)
+                } catch {
+                    print("Failed to set audio session category: \(error)")
+                }
+                #endif
+                
+                audioPlayer = player
+                audioPlayer?.prepareToPlay()
+                audioPlayer?.play()
+                
+                isPlaying = true
                 duration = audioPlayer?.duration ?? 0
                 currentTime = 0
                 
@@ -293,6 +336,9 @@ struct EnhancedRecordingRowView: View {
                 
             } catch {
                 print("Error playing audio: \(error)")
+                // Reset state on error
+                isPlaying = false
+                selectedFile = nil
             }
         }
     }

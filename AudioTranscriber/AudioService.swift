@@ -60,7 +60,15 @@ class AudioService: ObservableObject {
     @Published var initializationError: String?
     @Published var audioLevel: Float = 0.0
     
+    // MARK: - Segmentation Properties
+    @Published var currentSegmentedRecording: SegmentedRecording?
+    @Published var currentSegmentIndex: Int = 0
+    @Published var recordingProgress: TimeInterval = 0
+    
     private var currentRecordingURL: URL?
+    private var segmentTimer: Timer?
+    private var recordingStartTime: Date?
+    private let segmentDuration: TimeInterval = 30.0 // 30 seconds
     private let logger = DebugLogger.shared
     
     #if os(iOS)
@@ -223,8 +231,357 @@ class AudioService: ObservableObject {
     }
     #endif
 
+    // MARK: - 30-Second Segmented Recording
+    
+    func startSegmentedRecording() {
+        logger.logInfo("🎙️ Starting 30-second segmented recording...")
+        
+        guard permissionStatus == .authorized else {
+            logger.logWarning("Speech recognition not authorized")
+            return
+        }
+        
+        guard microphonePermissionGranted else {
+            logger.logWarning("Microphone permission not granted")
+            return
+        }
+        
+        // Create new segmented recording
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let timestamp = dateFormatter.string(from: Date())
+        let baseFileName = "AudioTranscriber_Recording_\(timestamp)"
+        
+        currentSegmentedRecording = SegmentedRecording(baseFileName: baseFileName)
+        currentSegmentIndex = 0
+        recordingStartTime = Date()
+        recordingProgress = 0
+        
+        // Start the first segment
+        startNewSegment()
+        
+        // Start the segment timer
+        startSegmentTimer()
+        
+        DispatchQueue.main.async {
+            self.isRecording = true
+            self.currentSegmentedRecording?.isRecording = true
+        }
+    }
+    
+    func stopSegmentedRecording() {
+        logger.logInfo("⏹️ Stopping segmented recording...")
+        
+        // Stop the segment timer
+        segmentTimer?.invalidate()
+        segmentTimer = nil
+        
+        // Stop the current segment
+        stopCurrentSegment()
+        
+        // Process all segments for transcription
+        if let recording = currentSegmentedRecording {
+            processSegmentsForTranscription(recording)
+        }
+        
+        DispatchQueue.main.async {
+            self.isRecording = false
+            self.currentSegmentedRecording?.isRecording = false
+        }
+        
+        logger.logSuccess("Segmented recording stopped successfully")
+    }
+    
+    private func startSegmentTimer() {
+        segmentTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self, let startTime = self.recordingStartTime else { return }
+            
+            let elapsed = Date().timeIntervalSince(startTime)
+            self.recordingProgress = elapsed
+            
+            // Check if we need to start a new segment
+            let currentSegmentTime = elapsed - (Double(self.currentSegmentIndex) * self.segmentDuration)
+            
+            // Only start next segment if current segment has reached 30 seconds AND we're still recording
+            if currentSegmentTime >= self.segmentDuration && self.isRecording {
+                self.logger.logInfo("⏰ Segment \(self.currentSegmentIndex + 1) completed, starting next segment")
+                self.stopCurrentSegment()
+                self.currentSegmentIndex += 1
+                self.startNewSegment()
+            }
+        }
+    }
+    
+    private func startNewSegment() {
+        logger.logInfo("🎬 Starting segment \(currentSegmentIndex + 1)")
+        
+        guard let audioEngine = audioEngine else {
+            logger.logError("AudioEngine is nil - cannot start segment")
+            return
+        }
+        
+        // Stop any existing recording first
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
+        let inputNode = audioEngine.inputNode
+        
+        // Recording format
+        guard let recordingFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                                                  sampleRate: 44100.0,
+                                                  channels: 1,
+                                                  interleaved: false) else {
+            logger.logError("Could not create audio format for segment")
+            return
+        }
+        
+        // Connect input to mixer
+        let connectionFormat = inputNode.outputFormat(forBus: 0)
+        audioEngine.connect(inputNode, to: audioEngine.mainMixerNode, format: connectionFormat)
+        
+        // Create segment file
+        guard let segmentURL = createSegmentFileURL() else {
+            logger.logError("Could not create segment file URL")
+            return
+        }
+        
+        currentRecordingURL = segmentURL
+        
+        do {
+            audioFile = try AVAudioFile(forWriting: segmentURL, settings: recordingFormat.settings)
+            
+            // Setup real-time transcription for this segment
+            startRealTimeTranscription(format: recordingFormat)
+            
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] (buffer, when) in
+                do {
+                    try self?.audioFile?.write(from: buffer)
+                    self?.recognitionRequest?.append(buffer)
+                    self?.updateAudioLevel(from: buffer)
+                } catch {
+                    self?.logger.logError("Error writing buffer to segment file", error: error)
+                }
+            }
+            
+            audioEngine.prepare()
+            try audioEngine.start()
+            
+        } catch {
+            logger.logError("Error starting segment recording", error: error)
+        }
+    }
+    
+    private func stopCurrentSegment() {
+        guard let audioEngine = audioEngine else { return }
+        
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
+        // Stop transcription for this segment
+        stopRealTimeTranscription()
+        
+        // Save the segment
+        if let segmentURL = currentRecordingURL {
+            let startTime = Double(currentSegmentIndex) * segmentDuration
+            let actualDuration = min(segmentDuration, recordingProgress - startTime)
+            
+            let segment = AudioSegment(
+                url: segmentURL,
+                startTime: startTime,
+                duration: actualDuration
+            )
+            
+            currentSegmentedRecording?.addSegment(segment)
+            logger.logInfo("💾 Saved segment \(currentSegmentIndex + 1): \(segmentURL.lastPathComponent)")
+        }
+        
+        audioFile = nil
+        // Note: currentSegmentIndex is incremented in the timer, not here
+    }
+    
+    private func createSegmentFileURL() -> URL? {
+        guard let recording = currentSegmentedRecording else { return nil }
+        
+        let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let segmentFileName = "\(recording.baseFileName)_segment_\(String(format: "%03d", currentSegmentIndex + 1)).caf"
+        return documentPath.appendingPathComponent(segmentFileName)
+    }
+    
+    private func processSegmentsForTranscription(_ recording: SegmentedRecording) {
+        logger.logInfo("🔄 Processing \(recording.segments.count) segments for transcription...")
+        
+        let dispatchGroup = DispatchGroup()
+        
+        for (index, segment) in recording.segments.enumerated() {
+            dispatchGroup.enter()
+            
+            DispatchQueue.main.async {
+                recording.segments[index].isTranscribing = true
+            }
+            
+            transcribeAudioFile(url: segment.url) { [weak self] transcription in
+                DispatchQueue.main.async {
+                    recording.segments[index].transcription = transcription ?? "[Transcription failed]"
+                    recording.segments[index].isTranscribing = false
+                    recording.segments[index].transcriptionCompleted = true
+                    
+                    recording.updateCombinedTranscription()
+                    
+                    self?.logger.logInfo("✅ Transcribed segment \(index + 1)/\(recording.segments.count)")
+                }
+                dispatchGroup.leave()
+            }
+        }
+        
+        // When all segments are processed
+        dispatchGroup.notify(queue: .main) {
+            self.logger.logSuccess("🎉 All segments transcribed successfully")
+            self.transcribedText = recording.combinedTranscription
+            
+            // Create a combined audio file
+            self.createCombinedAudioFile(from: recording)
+        }
+    }
+    
+    private func createCombinedAudioFile(from recording: SegmentedRecording) {
+        logger.logInfo("🔗 Creating combined audio file...")
+        
+        // If only one segment, just copy it directly
+        if recording.segments.count == 1 {
+            guard let segment = recording.segments.first else { return }
+            
+            let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let combinedFileName = "\(recording.baseFileName)_combined.caf"
+            let combinedURL = documentPath.appendingPathComponent(combinedFileName)
+            
+            DispatchQueue.global(qos: .background).async {
+                do {
+                    // Remove existing file if it exists
+                    if FileManager.default.fileExists(atPath: combinedURL.path) {
+                        try FileManager.default.removeItem(at: combinedURL)
+                    }
+                    
+                    // Copy the single segment as the combined file
+                    try FileManager.default.copyItem(at: segment.url, to: combinedURL)
+                    
+                    DispatchQueue.main.async {
+                        self.logger.logSuccess("🎵 Combined audio file created: \(combinedFileName)")
+                        self.currentRecordingURL = combinedURL
+                        self.convertAndCopyRecording(cafURL: combinedURL)
+                    }
+                } catch {
+                    self.logger.logError("Error creating combined audio file", error: error)
+                }
+            }
+            return
+        }
+        
+        // Multiple segments - create composition
+        let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let combinedFileName = "\(recording.baseFileName)_combined.caf"
+        let combinedURL = documentPath.appendingPathComponent(combinedFileName)
+        
+        DispatchQueue.global(qos: .background).async {
+            do {
+                // Create composition
+                let composition = AVMutableComposition()
+                guard let audioTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+                    self.logger.logError("Could not create audio track for combined file")
+                    return
+                }
+                
+                var currentTime = CMTime.zero
+                
+                // Add each segment to the composition
+                for segment in recording.segments.sorted(by: { $0.startTime < $1.startTime }) {
+                    let asset = AVAsset(url: segment.url)
+                    guard let assetTrack = asset.tracks(withMediaType: .audio).first else { continue }
+                    
+                    let duration = CMTime(seconds: segment.duration, preferredTimescale: 600)
+                    let timeRange = CMTimeRange(start: .zero, duration: duration)
+                    
+                    try audioTrack.insertTimeRange(timeRange, of: assetTrack, at: currentTime)
+                    currentTime = CMTimeAdd(currentTime, duration)
+                }
+                
+                // Export the combined file using compatible preset
+                guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetHighestQuality) else {
+                    self.logger.logError("Could not create export session for combined file")
+                    return
+                }
+                
+                exportSession.outputURL = combinedURL
+                exportSession.outputFileType = .caf
+                
+                // Add timeout for export session
+                var hasCompleted = false
+                let exportTimeoutSeconds = 60.0 // 1 minute timeout
+                
+                let exportTimer = Timer.scheduledTimer(withTimeInterval: exportTimeoutSeconds, repeats: false) { _ in
+                    if !hasCompleted {
+                        hasCompleted = true
+                        exportSession.cancelExport()
+                        self.logger.logWarning("Combined audio file export timed out")
+                    }
+                }
+                
+                exportSession.exportAsynchronously {
+                    DispatchQueue.main.async {
+                        guard !hasCompleted else { return }
+                        hasCompleted = true
+                        exportTimer.invalidate()
+                        
+                        switch exportSession.status {
+                        case .completed:
+                            self.logger.logSuccess("🎵 Combined audio file created: \(combinedFileName)")
+                            self.currentRecordingURL = combinedURL
+                            self.convertAndCopyRecording(cafURL: combinedURL)
+                        case .failed:
+                            self.logger.logError("Failed to create combined audio file", error: exportSession.error)
+                            // Try fallback: just use the first segment as the combined file
+                            if let firstSegment = recording.segments.first {
+                                self.logger.logInfo("Using first segment as fallback combined file")
+                                self.currentRecordingURL = firstSegment.url
+                                self.convertAndCopyRecording(cafURL: firstSegment.url)
+                            }
+                        case .cancelled:
+                            self.logger.logWarning("Combined audio file creation was cancelled")
+                        default:
+                            break
+                        }
+                    }
+                }
+                
+            } catch {
+                self.logger.logError("Error creating combined audio file", error: error)
+            }
+        }
+    }
+    
+    // MARK: - Legacy Single Recording (kept for compatibility)
+    
     func startRecording() {
-        logger.logInfo("🎙️ Starting recording...")
+        if UserDefaults.standard.bool(forKey: "useSegmentedRecording") {
+            startSegmentedRecording()
+        } else {
+            startLegacyRecording()
+        }
+    }
+    
+    func stopRecording() {
+        if UserDefaults.standard.bool(forKey: "useSegmentedRecording") {
+            stopSegmentedRecording()
+        } else {
+            stopLegacyRecording()
+        }
+    }
+    
+    func startLegacyRecording() {
+        logger.logInfo("🎙️ Starting legacy single-file recording...")
         
         guard permissionStatus == .authorized else {
             logger.logWarning("Speech recognition not authorized")
@@ -244,7 +601,7 @@ class AudioService: ObservableObject {
         // Stop any existing recording first
         if audioEngine.isRunning {
             logger.logInfo("Stopping existing recording")
-            stopRecording()
+            stopLegacyRecording()
         }
         
         logger.logInfo("Getting input node")
@@ -314,12 +671,12 @@ class AudioService: ObservableObject {
 
         } catch {
             print("Error starting recording: \(error.localizedDescription)")
-            stopRecording()
+            stopLegacyRecording()
         }
     }
 
-    func stopRecording() {
-        logger.logInfo("⏹️ Stopping recording...")
+    func stopLegacyRecording() {
+        logger.logInfo("⏹️ Stopping legacy recording...")
         
         guard let audioEngine = audioEngine else {
             logger.logWarning("AudioEngine is nil during stop")
@@ -353,7 +710,7 @@ class AudioService: ObservableObject {
             convertAndCopyRecording(cafURL: recordingURL)
         }
         
-        logger.logSuccess("Recording stopped successfully")
+        logger.logSuccess("Legacy recording stopped successfully")
     }
     
     private func startRealTimeTranscription(format: AVAudioFormat) {
@@ -400,20 +757,72 @@ class AudioService: ObservableObject {
     }
     
     func transcribeAudioFile(url: URL, completion: @escaping (String?) -> Void) {
+        // First check if we have a cached transcript
+        if let cachedTranscript = TranscriptManager.shared.getTranscript(for: url) {
+            logger.logInfo("Using cached transcript for: \(url.lastPathComponent)")
+            completion(cachedTranscript)
+            return
+        }
+        
         guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
-            completion(nil)
+            logger.logWarning("Speech recognizer not available for file: \(url.lastPathComponent)")
+            completion("[Speech recognition unavailable]")
+            return
+        }
+        
+        // Check if file exists and is readable
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            logger.logError("Audio file does not exist: \(url.path)")
+            completion("[Audio file not found]")
             return
         }
         
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.shouldReportPartialResults = false
         
-        speechRecognizer.recognitionTask(with: request) { result, error in
-            if let result = result, result.isFinal {
-                completion(result.bestTranscription.formattedString)
-            } else {
-                completion(nil)
+        // Add timeout to prevent hanging
+        var hasCompleted = false
+        let timeoutSeconds = 30.0
+        
+        let timeoutTimer = Timer.scheduledTimer(withTimeInterval: timeoutSeconds, repeats: false) { _ in
+            if !hasCompleted {
+                hasCompleted = true
+                self.logger.logWarning("Speech recognition timed out for file: \(url.lastPathComponent)")
+                completion("[Transcription timed out]")
             }
+        }
+        
+        let task = speechRecognizer.recognitionTask(with: request) { result, error in
+            DispatchQueue.main.async {
+                guard !hasCompleted else { return }
+                hasCompleted = true
+                timeoutTimer.invalidate()
+                
+                if let error = error {
+                    self.logger.logWarning("Speech recognition error for \(url.lastPathComponent): \(error.localizedDescription)")
+                    // Provide a fallback message instead of nil
+                    completion("[Transcription failed: \(error.localizedDescription)]")
+                    return
+                }
+                
+                if let result = result {
+                    let transcription = result.bestTranscription.formattedString
+                    if transcription.isEmpty {
+                        completion("[No speech detected]")
+                    } else {
+                        // Cache the successful transcription
+                        TranscriptManager.shared.saveTranscript(transcription, for: url)
+                        completion(transcription)
+                    }
+                } else {
+                    completion("[No transcription result]")
+                }
+            }
+        }
+        
+        // Store the task to prevent it from being deallocated
+        if recognitionTask == nil {
+            recognitionTask = task
         }
     }
     

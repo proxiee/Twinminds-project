@@ -165,10 +165,11 @@ struct AudioPlayerView: View {
     private func togglePlayback() {
         if isPlaying {
             audioPlayer?.pause()
+            isPlaying = false
         } else {
             audioPlayer?.play()
+            isPlaying = true
         }
-        isPlaying.toggle()
     }
     
     private func setPlaybackRate(_ rate: Float) {

@@ -37,6 +37,12 @@ struct ContentView: View {
                 
                 Spacer()
                 
+                // Recording mode toggle
+                SegmentationModeToggle(audioService: audioService)
+                
+                // Segmentation progress (shown during recording)
+                SegmentationProgressView(audioService: audioService)
+                
                 // Recording button and audio visualization
                 VStack(spacing: 15) {
                     Button(action: {
