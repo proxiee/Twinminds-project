@@ -1,66 +1,246 @@
-//
-//  ContentView.swift
-//  AudioTranscriber
-//
-//  Created by user281756 on 7/2/25.
-//
-
 import SwiftUI
 import SwiftData
+import Speech
+#if os(macOS)
+import AppKit
+#endif
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @StateObject private var audioService = AudioService()
+    @State private var recordedFiles: [URL] = []
+    @State private var showingRecordings = false
+    
+    private let logger = DebugLogger.shared
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        NavigationView {
+            VStack(spacing: 20) {
+                // Permission status
+                if audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted {
+                    VStack {
+                        Text("Permissions Required")
+                            .font(.headline)
+                            .foregroundColor(.red)
+                        
+                        Text(permissionStatusText)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                            .padding()
+                        
+                        if !audioService.microphonePermissionGranted {
+                            Text("Microphone access is also required for recording.")
+                                .font(.caption)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .padding()
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
+                Spacer()
+                
+                // Recording button and audio visualization
+                VStack(spacing: 15) {
+                    Button(action: {
+                        if audioService.isRecording {
+                            audioService.stopRecording()
+                        } else {
+                            audioService.startRecording()
+                        }
+                    }) {
+                        Image(systemName: audioService.isRecording ? "stop.circle.fill" : "record.circle")
+                            .font(.system(size: 80))
+                            .foregroundColor(audioService.isRecording ? .red : .blue)
+                    }
+                    .disabled(audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted)
+                    
+                    Text(recordingStatusText)
+                        .font(.headline)
+                        .padding(.top, 5)
+                    
+                    // Audio level visualization
+                    if audioService.isRecording || audioService.audioLevel > 0 {
+                        VStack(spacing: 8) {
+                            Text("Audio Level")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            
+                            AudioLevelView(audioService: audioService)
+                            
+                            Text(String(format: "%.1f%%", audioService.audioLevel * 100))
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.horizontal)
                     }
                 }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                
+                // Real-time transcription
+                if audioService.isRecording || !audioService.transcribedText.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Transcription:")
+                                .font(.headline)
+                            if audioService.isTranscribing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            }
+                            Spacer()
+                        }
+                        
+                        ScrollView {
+                            Text(audioService.transcribedText.isEmpty ? "Say something..." : audioService.transcribedText)
+                                .font(.body)
+                                .foregroundColor(audioService.transcribedText.isEmpty ? .gray : .primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(8)
+                        }
+                        .frame(maxHeight: 150)
                     }
+                    .padding(.horizontal)
+                }
+                
+                Spacer()
+                
+                // Debug and error info
+                if let error = audioService.initializationError {
+                    VStack {
+                        Text("Initialization Error")
+                            .font(.headline)
+                            .foregroundColor(.red)
+                        Text(error)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                            .padding()
+                    }
+                    .padding()
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
+                VStack(spacing: 12) {
+                    // Main actions row
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            loadRecordings()
+                            showingRecordings = true
+                        }) {
+                            VStack {
+                                Image(systemName: "list.bullet")
+                                    .font(.title2)
+                                Text("Recordings")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 80, height: 60)
+                            .background(Color.green)
+                            .cornerRadius(12)
+                        }
+                        
+                        Button(action: {
+                            audioService.syncAllRecordingsToProject()
+                        }) {
+                            VStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.title2)
+                                Text("Sync All")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 80, height: 60)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                        }
+                        
+                        Button(action: {
+                            copyRecordingsInfo()
+                        }) {
+                            VStack {
+                                Image(systemName: "info.circle")
+                                    .font(.title2)
+                                Text("Info")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 80, height: 60)
+                            .background(Color.purple)
+                            .cornerRadius(12)
+                        }
+                    }
+                    
+                    Text("Files: AudioTranscriber_Recording_[date].caf + .mp3/.m4a")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
             }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            .padding()
+            .navigationTitle("Audio Transcriber")
+            .onAppear {
+                loadRecordings()
             }
         }
+        .sheet(isPresented: $showingRecordings) {
+            RecordingsListView(audioService: audioService, recordedFiles: $recordedFiles)
+        }
+    }
+    
+    private var recordingStatusText: String {
+        if audioService.isRecording {
+            return "Recording..."
+        } else if audioService.permissionStatus != .authorized {
+            return "Permission Required"
+        } else {
+            return "Tap to Record"
+        }
+    }
+    
+    private var permissionStatusText: String {
+        switch audioService.permissionStatus {
+        case .notDetermined:
+            return "Please allow speech recognition access in Settings"
+        case .denied:
+            return "Speech recognition access denied. Please enable in Settings."
+        case .restricted:
+            return "Speech recognition access restricted"
+        case .authorized:
+            return "Speech recognition authorized"
+        @unknown default:
+            return "Unknown permission status"
+        }
+    }
+    
+    private func loadRecordings() {
+        recordedFiles = audioService.getRecordedFiles()
+    }
+    
+    private func copyDebugLogs() {
+        let logs = logger.getLogFileContents()
+        #if os(iOS)
+        UIPasteboard.general.string = logs
+        #elseif os(macOS)
+        NSPasteboard.general.setString(logs, forType: .string)
+        #endif
+        logger.logInfo("Debug logs copied to clipboard")
+    }
+    
+    private func copyRecordingsInfo() {
+        let info = audioService.getRecordingsInfo()
+        #if os(iOS)
+        UIPasteboard.general.string = info
+        #elseif os(macOS)
+        NSPasteboard.general.setString(info, forType: .string)
+        #endif
+        logger.logInfo("Recordings info copied to clipboard")
     }
 }
 
+
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }

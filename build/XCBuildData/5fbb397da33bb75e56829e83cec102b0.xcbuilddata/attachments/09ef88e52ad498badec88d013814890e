@@ -1,0 +1,78 @@
+{
+  "" : {
+    "diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriber-master.dia",
+    "emit-module-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriber-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriber-master-emit-module.dia",
+    "swift-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriber-master.swiftdeps"
+  },
+  "/Users/yash/Documents/Twinminds-project/AudioTranscriber/AudioService.swift" : {
+    "const-values" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioService.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioService.d",
+    "diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioService.dia",
+    "index-unit-output-path" : "/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioService.o",
+    "llvm-bc" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioService.bc",
+    "object" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioService.o",
+    "swift-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioService.swiftdeps",
+    "swiftmodule" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioService~partial.swiftmodule"
+  },
+  "/Users/yash/Documents/Twinminds-project/AudioTranscriber/AudioTranscriberApp.swift" : {
+    "const-values" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriberApp.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriberApp.d",
+    "diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriberApp.dia",
+    "index-unit-output-path" : "/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriberApp.o",
+    "llvm-bc" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriberApp.bc",
+    "object" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriberApp.o",
+    "swift-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriberApp.swiftdeps",
+    "swiftmodule" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/AudioTranscriberApp~partial.swiftmodule"
+  },
+  "/Users/yash/Documents/Twinminds-project/AudioTranscriber/ContentView.swift" : {
+    "const-values" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/yash/Documents/Twinminds-project/AudioTranscriber/DebugLogger.swift" : {
+    "const-values" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/DebugLogger.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/DebugLogger.d",
+    "diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/DebugLogger.dia",
+    "index-unit-output-path" : "/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/DebugLogger.o",
+    "llvm-bc" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/DebugLogger.bc",
+    "object" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/DebugLogger.o",
+    "swift-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/DebugLogger.swiftdeps",
+    "swiftmodule" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/DebugLogger~partial.swiftmodule"
+  },
+  "/Users/yash/Documents/Twinminds-project/AudioTranscriber/Item.swift" : {
+    "const-values" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/Item.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/Item.d",
+    "diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/Item.dia",
+    "index-unit-output-path" : "/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/Item.o",
+    "llvm-bc" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/Item.bc",
+    "object" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/Item.o",
+    "swift-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/Item.swiftdeps",
+    "swiftmodule" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/Item~partial.swiftmodule"
+  },
+  "/Users/yash/Documents/Twinminds-project/AudioTranscriber/RecordingsListView.swift" : {
+    "const-values" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/RecordingsListView.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/RecordingsListView.d",
+    "diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/RecordingsListView.dia",
+    "index-unit-output-path" : "/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/RecordingsListView.o",
+    "llvm-bc" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/RecordingsListView.bc",
+    "object" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/RecordingsListView.o",
+    "swift-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/RecordingsListView.swiftdeps",
+    "swiftmodule" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/RecordingsListView~partial.swiftmodule"
+  },
+  "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/yash/Documents/Twinminds-project/build/AudioTranscriber.build/Debug-iphoneos/AudioTranscriber.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}
