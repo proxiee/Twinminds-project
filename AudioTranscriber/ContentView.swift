@@ -186,7 +186,10 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showingRecordings) {
-            RecordingsListView(audioService: audioService, recordedFiles: $recordedFiles)
+            NavigationStack {
+                RecordingsListView(audioService: audioService, recordedFiles: $recordedFiles)
+            }
+            .frame(minWidth: 1000, minHeight: 700)
         }
     }
     
