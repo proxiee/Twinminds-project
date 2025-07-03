@@ -145,12 +145,17 @@ class AudioService: ObservableObject {
             }
         } else {
             // Use AVAudioSession for iOS 15-16 compatibility
+            #if os(iOS)
             AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
                 DispatchQueue.main.async {
                     self?.logger.logInfo("Microphone permission granted: \(granted)")
                     self?.microphonePermissionGranted = granted
                 }
             }
+            #else
+            // macOS doesn't need explicit microphone permission request in the same way
+            startRecording()
+            #endif
         }
     }
 
@@ -423,15 +428,22 @@ class AudioService: ObservableObject {
                 recording.segments[index].isTranscribing = true
             }
             
-            transcribeAudioFile(url: segment.url) { [weak self] transcription in
+            // Use the unified transcription service
+            TranscriptionService.shared.transcribeAudio(fileURL: segment.url) { [weak self] result in
                 DispatchQueue.main.async {
-                    recording.segments[index].transcription = transcription ?? "[Transcription failed]"
+                    switch result {
+                    case .success(let transcription, let method):
+                        recording.segments[index].transcription = transcription
+                        self?.logger.logInfo("✅ Transcribed segment \(index + 1)/\(recording.segments.count) using \(method.rawValue)")
+                    case .failure(let error, let method):
+                        recording.segments[index].transcription = "[Transcription failed: \(error)]"
+                        self?.logger.logWarning("⚠️ Failed to transcribe segment \(index + 1) with \(method?.rawValue ?? "unknown"): \(error)")
+                    }
+                    
                     recording.segments[index].isTranscribing = false
                     recording.segments[index].transcriptionCompleted = true
                     
                     recording.updateCombinedTranscription()
-                    
-                    self?.logger.logInfo("✅ Transcribed segment \(index + 1)/\(recording.segments.count)")
                 }
                 dispatchGroup.leave()
             }
@@ -509,13 +521,17 @@ class AudioService: ObservableObject {
                 }
                 
                 // Export the combined file using compatible preset
-                guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetHighestQuality) else {
+                guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A) else {
                     self.logger.logError("Could not create export session for combined file")
                     return
                 }
                 
-                exportSession.outputURL = combinedURL
-                exportSession.outputFileType = .caf
+                // Use .m4a extension for the combined file instead of .caf
+                let m4aCombinedFileName = "\(recording.baseFileName)_combined.m4a"
+                let m4aCombinedURL = documentPath.appendingPathComponent(m4aCombinedFileName)
+                
+                exportSession.outputURL = m4aCombinedURL
+                exportSession.outputFileType = .m4a
                 
                 // Add timeout for export session
                 var hasCompleted = false
@@ -537,9 +553,9 @@ class AudioService: ObservableObject {
                         
                         switch exportSession.status {
                         case .completed:
-                            self.logger.logSuccess("🎵 Combined audio file created: \(combinedFileName)")
-                            self.currentRecordingURL = combinedURL
-                            self.convertAndCopyRecording(cafURL: combinedURL)
+                            self.logger.logSuccess("🎵 Combined audio file created: \(m4aCombinedFileName)")
+                            self.currentRecordingURL = m4aCombinedURL
+                            self.convertAndCopyRecording(cafURL: m4aCombinedURL)
                         case .failed:
                             self.logger.logError("Failed to create combined audio file", error: exportSession.error)
                             // Try fallback: just use the first segment as the combined file
@@ -757,72 +773,16 @@ class AudioService: ObservableObject {
     }
     
     func transcribeAudioFile(url: URL, completion: @escaping (String?) -> Void) {
-        // First check if we have a cached transcript
-        if let cachedTranscript = TranscriptManager.shared.getTranscript(for: url) {
-            logger.logInfo("Using cached transcript for: \(url.lastPathComponent)")
-            completion(cachedTranscript)
-            return
-        }
-        
-        guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
-            logger.logWarning("Speech recognizer not available for file: \(url.lastPathComponent)")
-            completion("[Speech recognition unavailable]")
-            return
-        }
-        
-        // Check if file exists and is readable
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            logger.logError("Audio file does not exist: \(url.path)")
-            completion("[Audio file not found]")
-            return
-        }
-        
-        let request = SFSpeechURLRecognitionRequest(url: url)
-        request.shouldReportPartialResults = false
-        
-        // Add timeout to prevent hanging
-        var hasCompleted = false
-        let timeoutSeconds = 30.0
-        
-        let timeoutTimer = Timer.scheduledTimer(withTimeInterval: timeoutSeconds, repeats: false) { _ in
-            if !hasCompleted {
-                hasCompleted = true
-                self.logger.logWarning("Speech recognition timed out for file: \(url.lastPathComponent)")
-                completion("[Transcription timed out]")
+        // Use the unified transcription service
+        TranscriptionService.shared.transcribeAudio(fileURL: url) { result in
+            switch result {
+            case .success(let transcription, let method):
+                self.logger.logInfo("✅ Transcription completed using \(method.rawValue) for: \(url.lastPathComponent)")
+                completion(transcription)
+            case .failure(let error, let method):
+                self.logger.logWarning("⚠️ Transcription failed with \(method?.rawValue ?? "unknown"): \(error)")
+                completion("[Transcription failed: \(error)]")
             }
-        }
-        
-        let task = speechRecognizer.recognitionTask(with: request) { result, error in
-            DispatchQueue.main.async {
-                guard !hasCompleted else { return }
-                hasCompleted = true
-                timeoutTimer.invalidate()
-                
-                if let error = error {
-                    self.logger.logWarning("Speech recognition error for \(url.lastPathComponent): \(error.localizedDescription)")
-                    // Provide a fallback message instead of nil
-                    completion("[Transcription failed: \(error.localizedDescription)]")
-                    return
-                }
-                
-                if let result = result {
-                    let transcription = result.bestTranscription.formattedString
-                    if transcription.isEmpty {
-                        completion("[No speech detected]")
-                    } else {
-                        // Cache the successful transcription
-                        TranscriptManager.shared.saveTranscript(transcription, for: url)
-                        completion(transcription)
-                    }
-                } else {
-                    completion("[No transcription result]")
-                }
-            }
-        }
-        
-        // Store the task to prevent it from being deallocated
-        if recognitionTask == nil {
-            recognitionTask = task
         }
     }
     
@@ -830,10 +790,10 @@ class AudioService: ObservableObject {
         let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         do {
             let files = try FileManager.default.contentsOfDirectory(at: documentPath, includingPropertiesForKeys: [.creationDateKey])
-            let cafFiles = files.filter { $0.pathExtension == "caf" }
+            let audioFiles = files.filter { $0.pathExtension == "caf" || $0.pathExtension == "m4a" }
             
             // Sort by creation date, newest first
-            return cafFiles.sorted { file1, file2 in
+            return audioFiles.sorted { file1, file2 in
                 do {
                     let date1 = try file1.resourceValues(forKeys: [.creationDateKey]).creationDate ?? Date.distantPast
                     let date2 = try file2.resourceValues(forKeys: [.creationDateKey]).creationDate ?? Date.distantPast

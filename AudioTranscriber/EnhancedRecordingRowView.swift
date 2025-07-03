@@ -24,6 +24,7 @@ struct EnhancedRecordingRowView: View {
     @State private var isExpanded: Bool = false
     @State private var cachedTranscript: String = ""
     @State private var hasTranscript: Bool = false
+    @State private var isHovered: Bool = false
     @StateObject private var transcriptManager = TranscriptManager.shared
     
     private var isSelected: Bool {

@@ -213,7 +213,7 @@ struct RecordingsListView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
-                .background(Color(.secondarySystemBackground))
+                .background(Color.gray.opacity(0.1))
                 
                 Divider()
                 
@@ -261,7 +261,7 @@ struct RecordingsListView: View {
                 }
             }
             .frame(width: geometry.size.width * 0.45)
-            .background(Color(.systemBackground))
+            .background(Color.clear)
             
             Divider()
             
@@ -294,7 +294,7 @@ struct RecordingsListView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 16)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Color.gray.opacity(0.1))
                     
                     Divider()
                     
@@ -346,7 +346,7 @@ struct RecordingsListView: View {
                 }
             }
             .frame(width: geometry.size.width * 0.55)
-            .background(Color(.systemBackground))
+            .background(Color.clear)
         }
     }
     

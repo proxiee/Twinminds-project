@@ -5,6 +5,7 @@ struct ContentView: View {
     @StateObject private var audioService = AudioService()
     @State private var recordedFiles: [URL] = []
     @State private var showingRecordings = false
+    @State private var showingSettings = false
     
     private let logger = DebugLogger.shared
 
@@ -126,7 +127,7 @@ struct ContentView: View {
                 
                 VStack(spacing: 12) {
                     // Main actions row
-                    HStack(spacing: 16) {
+                    HStack(spacing: 12) {
                         Button(action: {
                             loadRecordings()
                             showingRecordings = true
@@ -138,8 +139,23 @@ struct ContentView: View {
                                     .font(.caption)
                             }
                             .foregroundColor(.white)
-                            .frame(width: 80, height: 60)
+                            .frame(width: 75, height: 60)
                             .background(Color.green)
+                            .cornerRadius(12)
+                        }
+                        
+                        Button(action: {
+                            showingSettings = true
+                        }) {
+                            VStack {
+                                Image(systemName: "gearshape")
+                                    .font(.title2)
+                                Text("Settings")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 75, height: 60)
+                            .background(Color.orange)
                             .cornerRadius(12)
                         }
                         
@@ -153,7 +169,7 @@ struct ContentView: View {
                                     .font(.caption)
                             }
                             .foregroundColor(.white)
-                            .frame(width: 80, height: 60)
+                            .frame(width: 75, height: 60)
                             .background(Color.blue)
                             .cornerRadius(12)
                         }
@@ -168,7 +184,7 @@ struct ContentView: View {
                                     .font(.caption)
                             }
                             .foregroundColor(.white)
-                            .frame(width: 80, height: 60)
+                            .frame(width: 75, height: 60)
                             .background(Color.purple)
                             .cornerRadius(12)
                         }
@@ -206,6 +222,9 @@ struct ContentView: View {
             }
             .frame(minWidth: 1000, minHeight: 700)
             #endif
+        }
+        .sheet(isPresented: $showingSettings) {
+            TranscriptionSettingsView()
         }
     }
     

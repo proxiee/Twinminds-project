@@ -120,7 +120,7 @@ struct TranscriptView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color(.systemBackground))
+            .background(Color.clear)
             
             Divider()
             
@@ -174,7 +174,7 @@ struct TranscriptView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(Color.clear)
             }
         }
     }
@@ -216,7 +216,7 @@ struct TranscriptView: View {
         #if os(macOS)
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.plainText]
-        savePanel.nameFieldStringValue = selectedFile?.deletingPathExtension().lastPathComponent.appending("_transcript.txt") ?? "transcript.txt"
+        savePanel.nameFieldStringValue = selectedFile.deletingPathExtension().lastPathComponent.appending("_transcript.txt")
         
         if savePanel.runModal() == .OK, let url = savePanel.url {
             do {
