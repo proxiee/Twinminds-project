@@ -51,10 +51,12 @@ class KeychainService {
     }
 }
 
-// Store the API key
-let apiKey = "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"
-let success = KeychainService.shared.saveOpenAIKey(apiKey)
+// Store the API key (replace with your actual API key)
+// let apiKey = "your-openai-api-key-here"
+// let success = KeychainService.shared.saveOpenAIKey(apiKey)
 
+// Uncomment the code below after setting your API key
+/*
 if success {
     print("✅ OpenAI API Key stored successfully in Keychain")
     
@@ -68,3 +70,4 @@ if success {
 } else {
     print("❌ Failed to store API Key in Keychain")
 }
+*/
