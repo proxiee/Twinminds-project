@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		926C0D812E17941000E5DFF1 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 926C0D802E17940F00E5DFF1 /* WidgetKit.framework */; };
+		926C0D832E17941000E5DFF1 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 926C0D822E17941000E5DFF1 /* SwiftUI.framework */; };
+		926C0D922E17941200E5DFF1 /* AudioTranscriberWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 926C0D7E2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		6A5981AC2E151BEE0082227F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,13 +27,47 @@
 			remoteGlobalIDString = 6A59819A2E151BED0082227F;
 			remoteInfo = AudioTranscriber;
 		};
+		926C0D902E17941200E5DFF1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6A5981932E151BED0082227F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 926C0D7D2E17940F00E5DFF1;
+			remoteInfo = AudioTranscriberWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		926C0D972E17941200E5DFF1 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				926C0D922E17941200E5DFF1 /* AudioTranscriberWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		6A59819B2E151BED0082227F /* AudioTranscriber.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioTranscriber.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6A5981AB2E151BEE0082227F /* AudioTranscriberTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AudioTranscriberTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6A5981B52E151BEE0082227F /* AudioTranscriberUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AudioTranscriberUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		926C0D7E2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AudioTranscriberWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		926C0D802E17940F00E5DFF1 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		926C0D822E17941000E5DFF1 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		926C0D932E17941200E5DFF1 /* Exceptions for "AudioTranscriberWidget" folder in "AudioTranscriberWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 926C0D7D2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6A59819D2E151BED0082227F /* AudioTranscriber */ = {
@@ -43,6 +83,14 @@
 		6A5981B82E151BEE0082227F /* AudioTranscriberUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = AudioTranscriberUITests;
+			sourceTree = "<group>";
+		};
+		926C0D842E17941000E5DFF1 /* AudioTranscriberWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				926C0D932E17941200E5DFF1 /* Exceptions for "AudioTranscriberWidget" folder in "AudioTranscriberWidgetExtension" target */,
+			);
+			path = AudioTranscriberWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +117,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		926C0D7B2E17940F00E5DFF1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				926C0D832E17941000E5DFF1 /* SwiftUI.framework in Frameworks */,
+				926C0D812E17941000E5DFF1 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +135,8 @@
 				6A59819D2E151BED0082227F /* AudioTranscriber */,
 				6A5981AE2E151BEE0082227F /* AudioTranscriberTests */,
 				6A5981B82E151BEE0082227F /* AudioTranscriberUITests */,
+				926C0D842E17941000E5DFF1 /* AudioTranscriberWidget */,
+				926C0D7F2E17940F00E5DFF1 /* Frameworks */,
 				6A59819C2E151BED0082227F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +147,18 @@
 				6A59819B2E151BED0082227F /* AudioTranscriber.app */,
 				6A5981AB2E151BEE0082227F /* AudioTranscriberTests.xctest */,
 				6A5981B52E151BEE0082227F /* AudioTranscriberUITests.xctest */,
+				926C0D7E2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		926C0D7F2E17940F00E5DFF1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				926C0D802E17940F00E5DFF1 /* WidgetKit.framework */,
+				926C0D822E17941000E5DFF1 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -102,10 +171,12 @@
 				6A5981972E151BED0082227F /* Sources */,
 				6A5981982E151BED0082227F /* Frameworks */,
 				6A5981992E151BED0082227F /* Resources */,
+				926C0D972E17941200E5DFF1 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				926C0D912E17941200E5DFF1 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				6A59819D2E151BED0082227F /* AudioTranscriber */,
@@ -163,6 +234,28 @@
 			productReference = 6A5981B52E151BEE0082227F /* AudioTranscriberUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		926C0D7D2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 926C0D942E17941200E5DFF1 /* Build configuration list for PBXNativeTarget "AudioTranscriberWidgetExtension" */;
+			buildPhases = (
+				926C0D7A2E17940F00E5DFF1 /* Sources */,
+				926C0D7B2E17940F00E5DFF1 /* Frameworks */,
+				926C0D7C2E17940F00E5DFF1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				926C0D842E17941000E5DFF1 /* AudioTranscriberWidget */,
+			);
+			name = AudioTranscriberWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = AudioTranscriberWidgetExtension;
+			productReference = 926C0D7E2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +277,9 @@
 						CreatedOnToolsVersion = 16.4;
 						TestTargetID = 6A59819A2E151BED0082227F;
 					};
+					926C0D7D2E17940F00E5DFF1 = {
+						CreatedOnToolsVersion = 16.4;
+					};
 				};
 			};
 			buildConfigurationList = 6A5981962E151BED0082227F /* Build configuration list for PBXProject "AudioTranscriber" */;
@@ -203,6 +299,7 @@
 				6A59819A2E151BED0082227F /* AudioTranscriber */,
 				6A5981AA2E151BEE0082227F /* AudioTranscriberTests */,
 				6A5981B42E151BEE0082227F /* AudioTranscriberUITests */,
+				926C0D7D2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +320,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		6A5981B32E151BEE0082227F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		926C0D7C2E17940F00E5DFF1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +357,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		926C0D7A2E17940F00E5DFF1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +376,11 @@
 			isa = PBXTargetDependency;
 			target = 6A59819A2E151BED0082227F /* AudioTranscriber */;
 			targetProxy = 6A5981B62E151BEE0082227F /* PBXContainerItemProxy */;
+		};
+		926C0D912E17941200E5DFF1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 926C0D7D2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension */;
+			targetProxy = 926C0D902E17941200E5DFF1 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -555,6 +671,63 @@
 			};
 			name = Release;
 		};
+		926C0D952E17941200E5DFF1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AudioTranscriberWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = AudioTranscriberWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Yashwanth.AudioTranscriber.AudioTranscriberWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		926C0D962E17941200E5DFF1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AudioTranscriberWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = AudioTranscriberWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Yashwanth.AudioTranscriber.AudioTranscriberWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -590,6 +763,15 @@
 			buildConfigurations = (
 				6A5981C62E151BEE0082227F /* Debug */,
 				6A5981C72E151BEE0082227F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		926C0D942E17941200E5DFF1 /* Build configuration list for PBXNativeTarget "AudioTranscriberWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				926C0D952E17941200E5DFF1 /* Debug */,
+				926C0D962E17941200E5DFF1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

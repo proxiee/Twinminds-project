@@ -3,10 +3,10 @@ import Speech
 import Combine
 
 // MARK: - Transcription Method Enum
-enum TranscriptionMethod: String, CaseIterable {
-    case local = "Local (Apple Speech)"
-    case openAI = "OpenAI Whisper"
-    case openAIWithFallback = "OpenAI + Local Fallback"
+enum TranscriptionMethod: String, Codable, CaseIterable {
+    case local = "local"
+    case openAI = "openai"
+    case openAIWithFallback = "openai_with_fallback"
     
     var description: String {
         switch self {
@@ -16,6 +16,14 @@ enum TranscriptionMethod: String, CaseIterable {
             return "Uses OpenAI Whisper API (online, high accuracy)"
         case .openAIWithFallback:
             return "Uses OpenAI Whisper, falls back to local if it fails after 5 attempts"
+        }
+    }
+    
+    var displayName: String {
+        switch self {
+        case .local: return "Local (Apple Speech)"
+        case .openAI: return "OpenAI Whisper"
+        case .openAIWithFallback: return "OpenAI + Local Fallback"
         }
     }
     

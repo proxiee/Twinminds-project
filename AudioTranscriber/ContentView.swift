@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var recordedFiles: [URL] = []
     @State private var showingRecordings = false
     @State private var showingSettings = false
+    @State private var showingSessions = false
     
     private let logger = DebugLogger.shared
 
@@ -62,6 +63,18 @@ struct ContentView: View {
                     Text(recordingStatusText)
                         .font(.headline)
                         .padding(.top, 5)
+                    
+                    // Background recording indicator
+                    if audioService.isBackgroundRecording {
+                        HStack(spacing: 6) {
+                            Image(systemName: "waveform.and.mic")
+                                .foregroundColor(.orange)
+                            Text("Background recording active")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.top, 2)
+                    }
                     
                     // Audio level visualization
                     if audioService.isRecording || audioService.audioLevel > 0 {
@@ -145,6 +158,21 @@ struct ContentView: View {
                         }
                         
                         Button(action: {
+                            showingSessions = true
+                        }) {
+                            VStack {
+                                Image(systemName: "waveform.path")
+                                    .font(.title2)
+                                Text("Sessions")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 75, height: 60)
+                            .background(Color.indigo)
+                            .cornerRadius(12)
+                        }
+                        
+                        Button(action: {
                             showingSettings = true
                         }) {
                             VStack {
@@ -222,6 +250,9 @@ struct ContentView: View {
             }
             .frame(minWidth: 1000, minHeight: 700)
             #endif
+        }
+        .sheet(isPresented: $showingSessions) {
+            SessionListView()
         }
         .sheet(isPresented: $showingSettings) {
             TranscriptionSettingsView()
