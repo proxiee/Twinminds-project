@@ -12,8 +12,26 @@ struct ContentView: View {
     private let logger = DebugLogger.shared
 
     var body: some View {
-        NavigationView {
+        ZStack {
+            // Simple black to ash gradient background
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.black,
+                    Color(red: 0.2, green: 0.2, blue: 0.25)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
             VStack(spacing: 0) {
+                // Centered AudioTranscriber heading
+                Text("AudioTranscriber")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.top, 20)
+                    .padding(.bottom, 10)
+                
                 if let status = audioService.interruptionStatus {
                     Text(status)
                         .font(.headline)
@@ -39,16 +57,18 @@ struct ContentView: View {
                         VStack {
                             Text("Permissions Required")
                                 .font(.headline)
-                                .foregroundColor(.red)
+                                .foregroundColor(.white)
                             
                             Text(permissionStatusText)
                                 .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
                                 .multilineTextAlignment(.center)
                                 .padding()
                             
                             if !audioService.microphonePermissionGranted {
                                 Text("Microphone access is also required for recording.")
                                     .font(.caption)
+                                    .foregroundColor(.white.opacity(0.8))
                                     .multilineTextAlignment(.center)
                                     .padding(.top, 4)
                             }
@@ -105,6 +125,7 @@ struct ContentView: View {
                         }
                         Text(recordingStatusText)
                             .font(.headline)
+                            .foregroundColor(.white)
                             .padding(.top, 5)
                         
                         // Background recording indicator
@@ -124,13 +145,13 @@ struct ContentView: View {
                             VStack(spacing: 8) {
                                 Text("Audio Level")
                                     .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.white.opacity(0.7))
                                 
                                 AudioLevelView(audioService: audioService)
                                 
                                 Text(String(format: "%.1f%%", audioService.audioLevel * 100))
                                     .font(.caption2)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.white.opacity(0.7))
                             }
                             .padding(.horizontal)
                         }
@@ -142,9 +163,11 @@ struct ContentView: View {
                             HStack {
                                 Text("Transcription:")
                                     .font(.headline)
+                                    .foregroundColor(.white)
                                 if audioService.isTranscribing {
                                     ProgressView()
                                         .scaleEffect(0.8)
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 }
                                 Spacer()
                             }
@@ -152,10 +175,10 @@ struct ContentView: View {
                             ScrollView {
                                 Text(audioService.transcribedText.isEmpty ? "Say something..." : audioService.transcribedText)
                                     .font(.body)
-                                    .foregroundColor(audioService.transcribedText.isEmpty ? .gray : .primary)
+                                    .foregroundColor(audioService.transcribedText.isEmpty ? .white.opacity(0.5) : .white)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding()
-                                    .background(Color.gray.opacity(0.1))
+                                    .background(Color.white.opacity(0.1))
                                     .cornerRadius(8)
                             }
                             .frame(maxHeight: 150)
@@ -170,9 +193,10 @@ struct ContentView: View {
                         VStack {
                             Text("Initialization Error")
                                 .font(.headline)
-                                .foregroundColor(.red)
+                                .foregroundColor(.white)
                             Text(error)
                                 .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
                                 .multilineTextAlignment(.center)
                                 .padding()
                         }
@@ -253,22 +277,15 @@ struct ContentView: View {
                             .accessibilityLabel("Show Help and Onboarding")
                             .accessibilityHint("Double tap to view help and tips for using the app.")
                         }
-                        
-                        Text("Files: AudioTranscriber_Recording_[date].caf + .mp3/.m4a")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
                     }
                 }
             }
             .padding()
-            .navigationTitle("Audio Transcriber")
-            .onAppear {
-                AudioTranscriberApp.registerTerminationObserver(audioService: audioService)
-                audioService.checkForPartialRecordingsAndRecover()
-                loadRecordings()
-            }
+        }
+        .onAppear {
+            AudioTranscriberApp.registerTerminationObserver(audioService: audioService)
+            audioService.checkForPartialRecordingsAndRecover()
+            loadRecordings()
         }
         .sheet(isPresented: $showingRecordings) {
             #if os(iOS)

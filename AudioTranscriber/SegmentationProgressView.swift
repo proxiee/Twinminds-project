@@ -209,21 +209,23 @@ struct SegmentationModeToggle: View {
                 Text("Recording Mode")
                     .font(.subheadline)
                     .fontWeight(.medium)
+                    .foregroundColor(.white)
                 
                 Spacer()
                 
-                Toggle("30-second segments", isOn: $useSegmentation)
+                Toggle("30s segments", isOn: $useSegmentation)
                     .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    .labelsHidden()
             }
             
-            Text(useSegmentation ? "Records in 30-second segments for better transcription" : "Records as a single continuous file")
+            Text(useSegmentation ? "Records in 30s segments for better transcription" : "Records as a single continuous file")
                 .font(.caption2)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.8))
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(Color.gray.opacity(0.1))
+        .background(Color.white.opacity(0.1))
         .cornerRadius(8)
         .disabled(audioService.isRecording)
         .onChange(of: useSegmentation) { _ in
