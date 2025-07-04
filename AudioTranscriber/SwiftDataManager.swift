@@ -215,6 +215,20 @@ class SwiftDataManager: ObservableObject {
         }
     }
     
+    // MARK: - Offline Queuing & Retry Logic
+    func markSegmentPending(_ segment: TranscriptionSegment) {
+        guard let context = modelContext else { return }
+        segment.transcriptionStatus = "not_started"
+        segment.processingStatus = "pending"
+        segment.updatedAt = Date()
+        do {
+            try context.save()
+            logger.logInfo("Marked segment as pending for retry: \(segment.segmentIndex)")
+        } catch {
+            logger.logError("Failed to mark segment as pending", error: error)
+        }
+    }
+    
     // MARK: - Cleanup
     func deleteSession(_ session: RecordingSession) {
         guard let context = modelContext else { return }

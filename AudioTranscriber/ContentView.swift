@@ -12,217 +12,229 @@ struct ContentView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // Permission status
-                if audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted {
-                    VStack {
-                        Text("Permissions Required")
-                            .font(.headline)
-                            .foregroundColor(.red)
-                        
-                        Text(permissionStatusText)
-                            .font(.caption)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                        
-                        if !audioService.microphonePermissionGranted {
-                            Text("Microphone access is also required for recording.")
+            VStack(spacing: 0) {
+                if let status = audioService.interruptionStatus {
+                    Text(status)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.orange.opacity(0.9))
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(2)
+                }
+                VStack(spacing: 20) {
+                    // Permission status
+                    if audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted {
+                        VStack {
+                            Text("Permissions Required")
+                                .font(.headline)
+                                .foregroundColor(.red)
+                            
+                            Text(permissionStatusText)
                                 .font(.caption)
                                 .multilineTextAlignment(.center)
-                                .padding(.top, 4)
-                        }
-                    }
-                    .padding()
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(8)
-                }
-                
-                Spacer()
-                
-                // Recording mode toggle
-                SegmentationModeToggle(audioService: audioService)
-                
-                // Segmentation progress (shown during recording)
-                SegmentationProgressView(audioService: audioService)
-                
-                // Recording button and audio visualization
-                VStack(spacing: 15) {
-                    Button(action: {
-                        if audioService.isRecording {
-                            audioService.stopRecording()
-                        } else {
-                            audioService.startRecording()
-                        }
-                    }) {
-                        Image(systemName: audioService.isRecording ? "stop.circle.fill" : "record.circle")
-                            .font(.system(size: 80))
-                            .foregroundColor(audioService.isRecording ? .red : .blue)
-                    }
-                    .disabled(audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted)
-                    
-                    Text(recordingStatusText)
-                        .font(.headline)
-                        .padding(.top, 5)
-                    
-                    // Background recording indicator
-                    if audioService.isBackgroundRecording {
-                        HStack(spacing: 6) {
-                            Image(systemName: "waveform.and.mic")
-                                .foregroundColor(.orange)
-                            Text("Background recording active")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-                        .padding(.top, 2)
-                    }
-                    
-                    // Audio level visualization
-                    if audioService.isRecording || audioService.audioLevel > 0 {
-                        VStack(spacing: 8) {
-                            Text("Audio Level")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            
-                            AudioLevelView(audioService: audioService)
-                            
-                            Text(String(format: "%.1f%%", audioService.audioLevel * 100))
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.horizontal)
-                    }
-                }
-                
-                // Real-time transcription
-                if audioService.isRecording || !audioService.transcribedText.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Transcription:")
-                                .font(.headline)
-                            if audioService.isTranscribing {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            }
-                            Spacer()
-                        }
-                        
-                        ScrollView {
-                            Text(audioService.transcribedText.isEmpty ? "Say something..." : audioService.transcribedText)
-                                .font(.body)
-                                .foregroundColor(audioService.transcribedText.isEmpty ? .gray : .primary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding()
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(8)
+                            
+                            if !audioService.microphonePermissionGranted {
+                                Text("Microphone access is also required for recording.")
+                                    .font(.caption)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.top, 4)
+                            }
                         }
-                        .frame(maxHeight: 150)
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
                     }
-                    .padding(.horizontal)
-                }
-                
-                Spacer()
-                
-                // Debug and error info
-                if let error = audioService.initializationError {
-                    VStack {
-                        Text("Initialization Error")
+                    
+                    Spacer()
+                    
+                    // Recording mode toggle
+                    SegmentationModeToggle(audioService: audioService)
+                    
+                    // Segmentation progress (shown during recording)
+                    SegmentationProgressView(audioService: audioService)
+                    
+                    // Recording button and audio visualization
+                    VStack(spacing: 15) {
+                        Button(action: {
+                            if audioService.isRecording {
+                                audioService.stopRecording()
+                            } else {
+                                audioService.startRecording()
+                            }
+                        }) {
+                            Image(systemName: audioService.isRecording ? "stop.circle.fill" : "record.circle")
+                                .font(.system(size: 80))
+                                .foregroundColor(audioService.isRecording ? .red : .blue)
+                        }
+                        .disabled(audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted)
+                        
+                        Text(recordingStatusText)
                             .font(.headline)
-                            .foregroundColor(.red)
-                        Text(error)
-                            .font(.caption)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                    }
-                    .padding()
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(8)
-                }
-                
-                VStack(spacing: 12) {
-                    // Main actions row
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            loadRecordings()
-                            showingRecordings = true
-                        }) {
-                            VStack {
-                                Image(systemName: "list.bullet")
-                                    .font(.title2)
-                                Text("Recordings")
+                            .padding(.top, 5)
+                        
+                        // Background recording indicator
+                        if audioService.isBackgroundRecording {
+                            HStack(spacing: 6) {
+                                Image(systemName: "waveform.and.mic")
+                                    .foregroundColor(.orange)
+                                Text("Background recording active")
                                     .font(.caption)
+                                    .foregroundColor(.orange)
                             }
-                            .foregroundColor(.white)
-                            .frame(width: 75, height: 60)
-                            .background(Color.green)
-                            .cornerRadius(12)
+                            .padding(.top, 2)
                         }
                         
-                        Button(action: {
-                            showingSessions = true
-                        }) {
-                            VStack {
-                                Image(systemName: "waveform.path")
-                                    .font(.title2)
-                                Text("Sessions")
+                        // Audio level visualization
+                        if audioService.isRecording || audioService.audioLevel > 0 {
+                            VStack(spacing: 8) {
+                                Text("Audio Level")
                                     .font(.caption)
+                                    .foregroundColor(.gray)
+                                
+                                AudioLevelView(audioService: audioService)
+                                
+                                Text(String(format: "%.1f%%", audioService.audioLevel * 100))
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
                             }
-                            .foregroundColor(.white)
-                            .frame(width: 75, height: 60)
-                            .background(Color.indigo)
-                            .cornerRadius(12)
-                        }
-                        
-                        Button(action: {
-                            showingSettings = true
-                        }) {
-                            VStack {
-                                Image(systemName: "gearshape")
-                                    .font(.title2)
-                                Text("Settings")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.white)
-                            .frame(width: 75, height: 60)
-                            .background(Color.orange)
-                            .cornerRadius(12)
-                        }
-                        
-                        Button(action: {
-                            audioService.syncAllRecordingsToProject()
-                        }) {
-                            VStack {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                    .font(.title2)
-                                Text("Sync All")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.white)
-                            .frame(width: 75, height: 60)
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                        }
-                        
-                        Button(action: {
-                            copyRecordingsInfo()
-                        }) {
-                            VStack {
-                                Image(systemName: "info.circle")
-                                    .font(.title2)
-                                Text("Info")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.white)
-                            .frame(width: 75, height: 60)
-                            .background(Color.purple)
-                            .cornerRadius(12)
+                            .padding(.horizontal)
                         }
                     }
                     
-                    Text("Files: AudioTranscriber_Recording_[date].caf + .mp3/.m4a")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
+                    // Real-time transcription
+                    if audioService.isRecording || !audioService.transcribedText.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Transcription:")
+                                    .font(.headline)
+                                if audioService.isTranscribing {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
+                                Spacer()
+                            }
+                            
+                            ScrollView {
+                                Text(audioService.transcribedText.isEmpty ? "Say something..." : audioService.transcribedText)
+                                    .font(.body)
+                                    .foregroundColor(audioService.transcribedText.isEmpty ? .gray : .primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding()
+                                    .background(Color.gray.opacity(0.1))
+                                    .cornerRadius(8)
+                            }
+                            .frame(maxHeight: 150)
+                        }
                         .padding(.horizontal)
+                    }
+                    
+                    Spacer()
+                    
+                    // Debug and error info
+                    if let error = audioService.initializationError {
+                        VStack {
+                            Text("Initialization Error")
+                                .font(.headline)
+                                .foregroundColor(.red)
+                            Text(error)
+                                .font(.caption)
+                                .multilineTextAlignment(.center)
+                                .padding()
+                        }
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                    
+                    VStack(spacing: 12) {
+                        // Main actions row
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                loadRecordings()
+                                showingRecordings = true
+                            }) {
+                                VStack {
+                                    Image(systemName: "list.bullet")
+                                        .font(.title2)
+                                    Text("Recordings")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 75, height: 60)
+                                .background(Color.green)
+                                .cornerRadius(12)
+                            }
+                            
+                            Button(action: {
+                                showingSessions = true
+                            }) {
+                                VStack {
+                                    Image(systemName: "waveform.path")
+                                        .font(.title2)
+                                    Text("Sessions")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 75, height: 60)
+                                .background(Color.indigo)
+                                .cornerRadius(12)
+                            }
+                            
+                            Button(action: {
+                                showingSettings = true
+                            }) {
+                                VStack {
+                                    Image(systemName: "gearshape")
+                                        .font(.title2)
+                                    Text("Settings")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 75, height: 60)
+                                .background(Color.orange)
+                                .cornerRadius(12)
+                            }
+                            
+                            Button(action: {
+                                audioService.syncAllRecordingsToProject()
+                            }) {
+                                VStack {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                        .font(.title2)
+                                    Text("Sync All")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 75, height: 60)
+                                .background(Color.blue)
+                                .cornerRadius(12)
+                            }
+                            
+                            Button(action: {
+                                copyRecordingsInfo()
+                            }) {
+                                VStack {
+                                    Image(systemName: "info.circle")
+                                        .font(.title2)
+                                    Text("Info")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 75, height: 60)
+                                .background(Color.purple)
+                                .cornerRadius(12)
+                            }
+                        }
+                        
+                        Text("Files: AudioTranscriber_Recording_[date].caf + .mp3/.m4a")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
                 }
             }
             .padding()

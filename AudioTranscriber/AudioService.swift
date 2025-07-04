@@ -87,6 +87,9 @@ class AudioService: ObservableObject {
     private var backgroundTaskTimer: Timer?
     #endif
     
+    // User feedback for interruptions
+    @Published var interruptionStatus: String? = nil
+    
     init() {
         logger.logInfo("🚀 AudioService initialization started")
         
@@ -226,19 +229,24 @@ class AudioService: ObservableObject {
         case .began:
             print("Audio interruption began.")
             if isRecording {
-                stopRecording()
+                // Pause recording instead of stopping
+                pauseRecordingForInterruption()
+                interruptionStatus = "⏸️ Recording paused due to interruption."
+                clearInterruptionStatusAfterDelay()
             }
         case .ended:
             print("Audio interruption ended.")
             guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
             let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
             if options.contains(.shouldResume) {
-                print("Resuming audio session.")
-                do {
-                    try audioSession.setActive(true)
-                } catch {
-                    print("Could not reactivate audio session: \(error.localizedDescription)")
+                if isRecording {
+                    resumeRecordingAfterInterruption()
+                    interruptionStatus = "▶️ Recording resumed after interruption."
+                    clearInterruptionStatusAfterDelay()
                 }
+            } else {
+                interruptionStatus = "⚠️ Recording stopped due to interruption."
+                clearInterruptionStatusAfterDelay()
             }
         @unknown default:
             break
@@ -251,17 +259,59 @@ class AudioService: ObservableObject {
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
             return
         }
-        
         switch reason {
-        case .newDeviceAvailable:
-            print("New audio device available.")
         case .oldDeviceUnavailable:
-            print("Old audio device unavailable.")
             if isRecording {
+                interruptionStatus = "🎧 Input device removed. Recording stopped."
+                clearInterruptionStatusAfterDelay()
                 stopRecording()
             }
+        case .newDeviceAvailable:
+            interruptionStatus = "🎧 New input device available."
+            clearInterruptionStatusAfterDelay()
         default:
             break
+        }
+    }
+
+    private func isInputAvailable() -> Bool {
+        #if os(iOS)
+        return audioSession.availableInputs?.contains(where: { $0.portType == .builtInMic || $0.portType == .headsetMic || $0.portType == .bluetoothHFP }) ?? false
+        #else
+        return true
+        #endif
+    }
+
+    private func pauseRecordingForInterruption() {
+        // For now, just stop the audio engine and mark as paused
+        if let audioEngine = audioEngine, audioEngine.isRunning {
+            audioEngine.pause()
+            DispatchQueue.main.async {
+                self.isRecording = false
+                // TODO: Add user feedback (e.g., show alert or banner)
+            }
+        }
+    }
+
+    private func resumeRecordingAfterInterruption() {
+        // Try to resume audio engine if possible
+        if let audioEngine = audioEngine, !audioEngine.isRunning {
+            do {
+                try audioEngine.start()
+                DispatchQueue.main.async {
+                    self.isRecording = true
+                    // TODO: Add user feedback (e.g., show alert or banner)
+                }
+            } catch {
+                print("Failed to resume audio engine: \(error)")
+                stopRecording()
+            }
+        }
+    }
+
+    private func clearInterruptionStatusAfterDelay() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            self.interruptionStatus = nil
         }
     }
     #endif

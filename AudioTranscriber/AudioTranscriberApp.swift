@@ -37,6 +37,7 @@ struct AudioTranscriberApp: App {
         ) { _ in
             Task { @MainActor in
                 self.audioService.checkAndHandleWidgetActions()
+                TranscriptionService.shared.retryPendingTranscriptions()
             }
         }
         
@@ -62,6 +63,7 @@ struct AudioTranscriberApp: App {
             queue: .main
         ) { _ in
             handleAppWillEnterForeground()
+            TranscriptionService.shared.retryPendingTranscriptions()
         }
         #endif
     }

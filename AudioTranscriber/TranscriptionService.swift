@@ -269,6 +269,42 @@ class TranscriptionService: ObservableObject {
             }
         }
     }
+    
+    // Retry all pending transcriptions with exponential backoff
+    @MainActor
+    func retryPendingTranscriptions() {
+        Task {
+            let pendingSegments = await SwiftDataManager.shared.fetchPendingTranscriptions()
+            for segment in pendingSegments {
+                await retryTranscription(for: segment, attempt: 1)
+            }
+        }
+    }
+
+    @MainActor
+    private func retryTranscription(for segment: TranscriptionSegment, attempt: Int) async {
+        let maxAttempts = 5
+        let delay = pow(2.0, Double(attempt - 1))
+        logger.logInfo("Retrying transcription for segment \(segment.segmentIndex), attempt \(attempt)")
+        transcribeAudio(fileURL: segment.fileURL) { result in
+            Task { @MainActor in
+                switch result {
+                case .success(let transcription, let method):
+                    await SwiftDataManager.shared.updateSegmentTranscription(segment, transcription: transcription, method: method)
+                case .failure(let error, _):
+                    if attempt < maxAttempts {
+                        DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
+                            Task { @MainActor in
+                                await self.retryTranscription(for: segment, attempt: attempt + 1)
+                            }
+                        }
+                    } else {
+                        await SwiftDataManager.shared.markSegmentTranscriptionFailed(segment, error: error)
+                    }
+                }
+            }
+        }
+    }
 }
 
 // MARK: - UserDefaults Extension for convenience
