@@ -2,15 +2,52 @@ import SwiftUI
 import SwiftData
 
 struct SessionListView: View {
-    @ObservedObject var swiftDataManager = SwiftDataManager.shared
+    @ObservedObject var dataManager = SwiftDataManager.shared
     @State private var selectedSession: RecordingSession?
     @State private var showingSessionDetail = false
     @State private var searchText = ""
+    @State private var sortOption: SortOption = .dateDescending
+    @State private var filterOption: FilterOption = .all
     
+    enum SortOption: String, CaseIterable, Identifiable {
+        case dateDescending = "Newest"
+        case dateAscending = "Oldest"
+        case name = "Name"
+        case duration = "Duration"
+        var id: String { rawValue }
+    }
+    enum FilterOption: String, CaseIterable, Identifiable {
+        case all = "All"
+        case failed = "Failed"
+        case transcribed = "Transcribed"
+        case recent = "Recent"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         NavigationView {
             VStack {
-                if swiftDataManager.sessions.isEmpty {
+                HStack {
+                    TextField("Search sessions...", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    Menu {
+                        Picker("Sort by", selection: $sortOption) {
+                            ForEach(SortOption.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        Picker("Filter", selection: $filterOption) {
+                            ForEach(FilterOption.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.title2)
+                    }
+                }
+                .padding(.horizontal)
+                if dataManager.sessions.isEmpty {
                     VStack(spacing: 20) {
                         Image(systemName: "waveform.path")
                             .font(.system(size: 60))
@@ -36,7 +73,6 @@ struct SessionListView: View {
                         }
                         .onDelete(perform: deleteSessions)
                     }
-                    .searchable(text: $searchText, prompt: "Search sessions...")
                 }
             }
             .navigationTitle("Recording Sessions")
@@ -44,12 +80,12 @@ struct SessionListView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Refresh") {
-                        swiftDataManager.refreshSessions()
+                        dataManager.refreshSessions()
                     }
                 }
             }
             .onAppear {
-                swiftDataManager.refreshSessions()
+                dataManager.refreshSessions()
             }
             .sheet(isPresented: $showingSessionDetail) {
                 if let session = selectedSession {
@@ -60,22 +96,42 @@ struct SessionListView: View {
     }
     
     private var filteredSessions: [RecordingSession] {
-        if searchText.isEmpty {
-            return swiftDataManager.sessions
-        } else {
-            return swiftDataManager.sessions.filter { session in
-                session.baseFileName.localizedCaseInsensitiveContains(searchText) ||
-                session.combinedTranscription.localizedCaseInsensitiveContains(searchText)
-            }
+        var sessions = dataManager.sessions
+        // Filter
+        switch filterOption {
+        case .all:
+            break
+        case .failed:
+            sessions = sessions.filter { $0.hasFailedSegments }
+        case .transcribed:
+            sessions = sessions.filter { $0.isFullyTranscribed }
+        case .recent:
+            sessions = sessions.filter { $0.createdAt > Calendar.current.date(byAdding: .day, value: -7, to: Date())! }
         }
+        // Search
+        if !searchText.isEmpty {
+            sessions = sessions.filter { $0.baseFileName.localizedCaseInsensitiveContains(searchText) || $0.combinedTranscription.localizedCaseInsensitiveContains(searchText) }
+        }
+        // Sort
+        switch sortOption {
+        case .dateDescending:
+            sessions = sessions.sorted { $0.createdAt > $1.createdAt }
+        case .dateAscending:
+            sessions = sessions.sorted { $0.createdAt < $1.createdAt }
+        case .name:
+            sessions = sessions.sorted { $0.baseFileName < $1.baseFileName }
+        case .duration:
+            sessions = sessions.sorted { $0.totalDuration > $1.totalDuration }
+        }
+        return sessions
     }
     
     private func deleteSessions(offsets: IndexSet) {
         for index in offsets {
             let session = filteredSessions[index]
-            swiftDataManager.deleteSession(session)
+            dataManager.deleteSession(session)
         }
-        swiftDataManager.refreshSessions()
+        dataManager.refreshSessions()
     }
 }
 
@@ -112,10 +168,10 @@ struct SessionRowView: View {
                 
                 // Status indicators
                 HStack(spacing: 12) {
-                                            StatusBadge(
-                            title: RecordingStatus(rawValue: session.recordingStatus)?.displayName ?? "Unknown",
-                            color: statusColor(for: session.recordingStatus)
-                        )
+                    StatusBadge(
+                        title: RecordingStatus(rawValue: session.recordingStatus)?.displayName ?? "Unknown",
+                        color: statusColor(for: session.recordingStatus)
+                    )
                     
                     StatusBadge(
                         title: "\(session.completedTranscriptionCount)/\(session.segmentCount) transcribed",
@@ -347,6 +403,16 @@ struct SegmentDetailView: View {
         case TranscriptionStatus.skipped.rawValue: return .orange
         default: return .gray
         }
+    }
+}
+
+// Add computed helpers for filtering
+extension RecordingSession {
+    var hasFailedSegments: Bool {
+        segments.contains { $0.transcriptionStatus == "failed" }
+    }
+    var isFullyTranscribed: Bool {
+        !segments.isEmpty && segments.allSatisfy { $0.transcriptionStatus == "completed" }
     }
 }
 

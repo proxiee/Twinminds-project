@@ -90,6 +90,8 @@ class AudioService: ObservableObject {
     // User feedback for interruptions
     @Published var interruptionStatus: String? = nil
     
+    @Published var isPaused = false
+    
     init() {
         logger.logInfo("🚀 AudioService initialization started")
         
@@ -787,6 +789,7 @@ class AudioService: ObservableObject {
     }
 
     func stopRecording() {
+        isPaused = false
         if UserDefaults.standard.bool(forKey: "useSegmentedRecording") {
             stopSegmentedRecording()
         } else {
@@ -1361,6 +1364,33 @@ class AudioService: ObservableObject {
     private func setupBackgroundTask() {
         backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "AudioRecording") { [weak self] in
             self?.endBackgroundTask()
+        }
+    }
+    
+    func pauseRecording() {
+        guard isRecording, !isPaused else { return }
+        if let audioEngine = audioEngine, audioEngine.isRunning {
+            audioEngine.pause()
+            isPaused = true
+            logger.logInfo("⏸️ Recording paused by user")
+            interruptionStatus = "⏸️ Recording paused"
+            clearInterruptionStatusAfterDelay()
+        }
+    }
+
+    func resumeRecording() {
+        guard isRecording, isPaused else { return }
+        if let audioEngine = audioEngine, !audioEngine.isRunning {
+            do {
+                try audioEngine.start()
+                isPaused = false
+                logger.logInfo("▶️ Recording resumed by user")
+                interruptionStatus = "▶️ Recording resumed"
+                clearInterruptionStatusAfterDelay()
+            } catch {
+                logger.logError("Failed to resume audio engine", error: error)
+                stopRecording()
+            }
         }
     }
 }

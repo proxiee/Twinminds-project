@@ -58,19 +58,35 @@ struct ContentView: View {
                     
                     // Recording button and audio visualization
                     VStack(spacing: 15) {
-                        Button(action: {
-                            if audioService.isRecording {
-                                audioService.stopRecording()
-                            } else {
-                                audioService.startRecording()
+                        HStack(spacing: 30) {
+                            Button(action: {
+                                if audioService.isRecording {
+                                    if audioService.isPaused {
+                                        audioService.resumeRecording()
+                                    } else {
+                                        audioService.pauseRecording()
+                                    }
+                                }
+                            }) {
+                                Image(systemName: audioService.isPaused ? "play.circle.fill" : "pause.circle.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(audioService.isPaused ? .green : .orange)
                             }
-                        }) {
-                            Image(systemName: audioService.isRecording ? "stop.circle.fill" : "record.circle")
-                                .font(.system(size: 80))
-                                .foregroundColor(audioService.isRecording ? .red : .blue)
+                            .disabled(!audioService.isRecording)
+                            
+                            Button(action: {
+                                if audioService.isRecording {
+                                    audioService.stopRecording()
+                                } else {
+                                    audioService.startRecording()
+                                }
+                            }) {
+                                Image(systemName: audioService.isRecording ? "stop.circle.fill" : "record.circle")
+                                    .font(.system(size: 80))
+                                    .foregroundColor(audioService.isRecording ? .red : .blue)
+                            }
+                            .disabled(audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted || audioService.isPaused)
                         }
-                        .disabled(audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted)
-                        
                         Text(recordingStatusText)
                             .font(.headline)
                             .padding(.top, 5)
@@ -195,36 +211,6 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                                 .frame(width: 75, height: 60)
                                 .background(Color.orange)
-                                .cornerRadius(12)
-                            }
-                            
-                            Button(action: {
-                                audioService.syncAllRecordingsToProject()
-                            }) {
-                                VStack {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.title2)
-                                    Text("Sync All")
-                                        .font(.caption)
-                                }
-                                .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
-                                .background(Color.blue)
-                                .cornerRadius(12)
-                            }
-                            
-                            Button(action: {
-                                copyRecordingsInfo()
-                            }) {
-                                VStack {
-                                    Image(systemName: "info.circle")
-                                        .font(.title2)
-                                    Text("Info")
-                                        .font(.caption)
-                                }
-                                .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
-                                .background(Color.purple)
                                 .cornerRadius(12)
                             }
                         }
