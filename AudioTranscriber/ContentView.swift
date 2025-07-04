@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var showingRecordings = false
     @State private var showingSettings = false
     @State private var showingSessions = false
+    @State private var showingHelp = false
     
     private let logger = DebugLogger.shared
 
@@ -225,6 +226,23 @@ struct ContentView: View {
                             }
                             .accessibilityLabel("Show Settings")
                             .accessibilityHint("Double tap to view app settings and transcription options.")
+                            
+                            Button(action: {
+                                showingHelp = true
+                            }) {
+                                VStack {
+                                    Image(systemName: "questionmark.circle")
+                                        .font(.title2)
+                                    Text("Help")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 75, height: 60)
+                                .background(Color.purple)
+                                .cornerRadius(12)
+                            }
+                            .accessibilityLabel("Show Help and Onboarding")
+                            .accessibilityHint("Double tap to view help and tips for using the app.")
                         }
                         
                         Text("Files: AudioTranscriber_Recording_[date].caf + .mp3/.m4a")
@@ -268,6 +286,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingSettings) {
             TranscriptionSettingsView()
+        }
+        .sheet(isPresented: $showingHelp) {
+            OnboardingHelpView()
         }
     }
     
