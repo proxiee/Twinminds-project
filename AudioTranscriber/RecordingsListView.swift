@@ -49,6 +49,8 @@ struct RecordingsListView: View {
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .accessibilityLabel("Close Recordings List")
+                        .accessibilityHint("Double tap to close the recordings list.")
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -114,6 +116,8 @@ struct RecordingsListView: View {
                                     .font(.body)
                                     .foregroundColor(.accentColor)
                                 }
+                                .accessibilityLabel("Back to Recordings List")
+                                .accessibilityHint("Double tap to return to the list of recordings.")
                                 
                                 Spacer()
                                 
@@ -467,6 +471,9 @@ struct RecordingRowView: View {
                         .font(.title2)
                         .foregroundColor(.blue)
                 }
+                .accessibilityLabel(isPlaying && selectedFile == file ? "Pause Playback" : "Play Recording")
+                .accessibilityHint(isPlaying && selectedFile == file ? "Double tap to pause playback." : "Double tap to play this recording.")
+                .accessibilityValue(isPlaying && selectedFile == file ? "Playing" : "Paused")
                 
                 // Transcribe button
                 Button(action: {
@@ -482,6 +489,8 @@ struct RecordingRowView: View {
                     }
                 }
                 .disabled(isTranscribingFile && selectedFile == file)
+                .accessibilityLabel("Transcribe Recording")
+                .accessibilityHint("Double tap to transcribe this audio file.")
             }
             
             // Show transcription if available

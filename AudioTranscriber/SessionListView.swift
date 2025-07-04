@@ -28,19 +28,30 @@ struct SessionListView: View {
         NavigationView {
             VStack {
                 HStack {
-                    TextField("Search sessions...", text: $searchText)
+                    TextField("Search sessions", text: $searchText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal)
+                        .accessibilityLabel("Search Sessions")
+                        .accessibilityHint("Enter text to search sessions by name, date, or transcript.")
                     Menu {
                         Picker("Sort by", selection: $sortOption) {
                             ForEach(SortOption.allCases) { option in
                                 Text(option.rawValue).tag(option)
                             }
                         }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .padding(.horizontal)
+                        .accessibilityLabel("Sort Sessions")
+                        .accessibilityHint("Double tap to change the sort order of sessions.")
                         Picker("Filter", selection: $filterOption) {
                             ForEach(FilterOption.allCases) { option in
                                 Text(option.rawValue).tag(option)
                             }
                         }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .padding(.horizontal)
+                        .accessibilityLabel("Filter Sessions")
+                        .accessibilityHint("Double tap to filter sessions by status.")
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                             .font(.title2)
@@ -70,6 +81,8 @@ struct SessionListView: View {
                                 selectedSession = session
                                 showingSessionDetail = true
                             }
+                            .accessibilityLabel("Session: \(session.baseFileName)")
+                            .accessibilityHint("Double tap to view session details.")
                         }
                         .onDelete(perform: deleteSessions)
                     }

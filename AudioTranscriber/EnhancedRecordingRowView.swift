@@ -3,6 +3,9 @@ import AVFoundation
 #if os(macOS)
 import AppKit
 #endif
+#if os(iOS)
+import UIKit
+#endif
 
 struct EnhancedRecordingRowView: View {
     let file: URL
@@ -108,6 +111,9 @@ struct EnhancedRecordingRowView: View {
                             .foregroundColor(.accentColor)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel(isCurrentlyPlaying ? "Pause Playback" : "Play Recording")
+                    .accessibilityHint(isCurrentlyPlaying ? "Double tap to pause playback." : "Double tap to play this recording.")
+                    .accessibilityValue(isCurrentlyPlaying ? "Playing" : "Paused")
                     
                     // More options menu
                     Menu {
@@ -117,6 +123,8 @@ struct EnhancedRecordingRowView: View {
                             Label("Transcribe", systemImage: "text.bubble")
                         }
                         .disabled(isTranscribingFile && selectedFile == file)
+                        .accessibilityLabel("Transcribe Recording")
+                        .accessibilityHint("Double tap to transcribe this audio file.")
                         
                         Divider()
                         
@@ -126,6 +134,8 @@ struct EnhancedRecordingRowView: View {
                         }) {
                             Label("Show in Finder", systemImage: "folder")
                         }
+                        .accessibilityLabel("Show in Finder")
+                        .accessibilityHint("Double tap to reveal this file in Finder.")
                         #endif
                         
                         Button(action: {
@@ -133,6 +143,8 @@ struct EnhancedRecordingRowView: View {
                         }) {
                             Label("Share", systemImage: "square.and.arrow.up")
                         }
+                        .accessibilityLabel("Share Recording")
+                        .accessibilityHint("Double tap to share this audio file.")
                         
                         Divider()
                         
@@ -141,12 +153,16 @@ struct EnhancedRecordingRowView: View {
                         }) {
                             Label("Delete", systemImage: "trash")
                         }
+                        .accessibilityLabel("Delete Recording")
+                        .accessibilityHint("Double tap to delete this audio file.")
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .font(.system(size: 18))
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel("More Options")
+                    .accessibilityHint("Double tap to show more actions for this recording.")
                 }
             }
             .padding(.horizontal, 12)
@@ -370,7 +386,9 @@ struct EnhancedRecordingRowView: View {
     }
     
     private func shareFile() {
-        #if os(macOS)
+        #if os(iOS)
+        // Implement share functionality
+        #elseif os(macOS)
         let sharingService = NSSharingService(named: .sendViaAirDrop)
         sharingService?.perform(withItems: [file])
         #endif

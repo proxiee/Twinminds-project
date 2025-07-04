@@ -73,6 +73,9 @@ struct ContentView: View {
                                     .foregroundColor(audioService.isPaused ? .green : .orange)
                             }
                             .disabled(!audioService.isRecording)
+                            .accessibilityLabel(audioService.isPaused ? "Resume Recording" : "Pause Recording")
+                            .accessibilityHint("Double tap to pause or resume the current recording.")
+                            .accessibilityValue(audioService.isPaused ? "Paused" : "Recording")
                             
                             Button(action: {
                                 if audioService.isRecording {
@@ -86,6 +89,9 @@ struct ContentView: View {
                                     .foregroundColor(audioService.isRecording ? .red : .blue)
                             }
                             .disabled(audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted || audioService.isPaused)
+                            .accessibilityLabel(audioService.isRecording ? "Stop Recording" : "Start Recording")
+                            .accessibilityHint(audioService.isRecording ? "Double tap to stop recording." : "Double tap to start a new recording.")
+                            .accessibilityValue(audioService.isRecording ? "Recording" : "Ready")
                         }
                         Text(recordingStatusText)
                             .font(.headline)
@@ -183,21 +189,25 @@ struct ContentView: View {
                                 .background(Color.green)
                                 .cornerRadius(12)
                             }
+                            .accessibilityLabel("Show Recordings List")
+                            .accessibilityHint("Double tap to view all recorded audio files.")
                             
                             Button(action: {
                                 showingSessions = true
                             }) {
                                 VStack {
-                                    Image(systemName: "waveform.path")
+                                    Image(systemName: "rectangle.stack")
                                         .font(.title2)
                                     Text("Sessions")
                                         .font(.caption)
                                 }
                                 .foregroundColor(.white)
                                 .frame(width: 75, height: 60)
-                                .background(Color.indigo)
+                                .background(Color.blue)
                                 .cornerRadius(12)
                             }
+                            .accessibilityLabel("Show Sessions List")
+                            .accessibilityHint("Double tap to view all recording sessions.")
                             
                             Button(action: {
                                 showingSettings = true
@@ -210,9 +220,11 @@ struct ContentView: View {
                                 }
                                 .foregroundColor(.white)
                                 .frame(width: 75, height: 60)
-                                .background(Color.orange)
+                                .background(Color.gray)
                                 .cornerRadius(12)
                             }
+                            .accessibilityLabel("Show Settings")
+                            .accessibilityHint("Double tap to view app settings and transcription options.")
                         }
                         
                         Text("Files: AudioTranscriber_Recording_[date].caf + .mp3/.m4a")

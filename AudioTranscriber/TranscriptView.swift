@@ -2,6 +2,9 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 #endif
+#if os(iOS)
+import UIKit
+#endif
 
 struct TranscriptView: View {
     let selectedFile: URL
@@ -14,6 +17,7 @@ struct TranscriptView: View {
     @State private var showingShareSheet = false
     @State private var highlightedRanges: [Range<String.Index>] = []
     @StateObject private var transcriptManager = TranscriptManager.shared
+    @State private var shareSheetItem: ShareSheetItem? = nil
     
     private var hasTranscript: Bool {
         transcriptManager.hasTranscript(for: selectedFile)
@@ -56,6 +60,8 @@ struct TranscriptView: View {
                             TextField("Search transcript", text: $searchText)
                                 .textFieldStyle(PlainTextFieldStyle())
                                 .font(.caption)
+                                .accessibilityLabel("Search Transcript")
+                                .accessibilityHint("Enter text to search within the transcript.")
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -75,12 +81,16 @@ struct TranscriptView: View {
                             }) {
                                 Label("Copy", systemImage: "doc.on.doc")
                             }
+                            .accessibilityLabel("Copy Transcript")
+                            .accessibilityHint("Double tap to copy the transcript to the clipboard.")
                             
                             Button(action: {
                                 shareTranscript()
                             }) {
                                 Label("Share", systemImage: "square.and.arrow.up")
                             }
+                            .accessibilityLabel("Share Transcript")
+                            .accessibilityHint("Double tap to share the transcript using other apps.")
                             
                             Divider()
                             
@@ -89,12 +99,16 @@ struct TranscriptView: View {
                             }) {
                                 Label("Export as Text", systemImage: "doc.text")
                             }
+                            .accessibilityLabel("Export Transcript as Text File")
+                            .accessibilityHint("Double tap to export the transcript as a text file.")
                         } label: {
                             Image(systemName: "ellipsis.circle")
                                 .font(.title3)
                                 .foregroundColor(.secondary)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .accessibilityLabel("Transcript Actions")
+                        .accessibilityHint("Double tap to show transcript actions like copy, share, or export.")
                     }
                     
                     // Transcribe button - always show when not transcribing
@@ -115,6 +129,8 @@ struct TranscriptView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         .fixedSize()
+                        .accessibilityLabel(transcription.isEmpty ? "Transcribe Audio" : "Re-transcribe Audio")
+                        .accessibilityHint("Double tap to start or redo transcription for this audio file.")
                     }
                 }
             }
@@ -172,11 +188,18 @@ struct TranscriptView: View {
                         .lineSpacing(4)
                         .padding(20)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel("Transcript Content")
+                        .accessibilityValue(transcription)
                     }
                 }
                 .background(Color.clear)
             }
         }
+        #if os(iOS)
+        .sheet(item: $shareSheetItem) { item in
+            ActivityViewController(activityItems: item.items)
+        }
+        #endif
     }
     
     private func updateHighlights() {
@@ -206,18 +229,28 @@ struct TranscriptView: View {
     }
     
     private func shareTranscript() {
-        #if os(macOS)
+        #if os(iOS)
+        shareSheetItem = ShareSheetItem(items: [transcription])
+        #elseif os(macOS)
         let sharingService = NSSharingService(named: .sendViaAirDrop)
         sharingService?.perform(withItems: [transcription])
         #endif
     }
     
     private func exportTranscript() {
-        #if os(macOS)
+        #if os(iOS)
+        let fileName = selectedFile.deletingPathExtension().lastPathComponent.appending("_transcript.txt")
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        do {
+            try transcription.write(to: tempURL, atomically: true, encoding: .utf8)
+            shareSheetItem = ShareSheetItem(items: [tempURL])
+        } catch {
+            print("Failed to save transcript: \(error)")
+        }
+        #elseif os(macOS)
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.plainText]
         savePanel.nameFieldStringValue = selectedFile.deletingPathExtension().lastPathComponent.appending("_transcript.txt")
-        
         if savePanel.runModal() == .OK, let url = savePanel.url {
             do {
                 try transcription.write(to: url, atomically: true, encoding: .utf8)
