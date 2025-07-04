@@ -4,6 +4,7 @@ import AVFoundation
 import AppKit
 #endif
 
+
 struct RecordingsListView: View {
     @ObservedObject var audioService: AudioService
     @Binding var recordedFiles: [URL]
@@ -13,51 +14,413 @@ struct RecordingsListView: View {
     @State private var isPlaying = false
     @State private var audioPlayer: AVAudioPlayer?
     @State private var showingTranscription = false
+    @State private var currentTime: Double = 0
+    @State private var duration: Double = 0
+    @State private var playbackTimer: Timer?
+    @State private var transcriptCache: [URL: String] = [:]
+    @State private var transcriptStatus: [URL: TranscriptStatus] = [:]
+    @StateObject private var transcriptManager = TranscriptManager.shared
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
-            List {
-                if recordedFiles.isEmpty {
-                    Text("No recordings yet")
-                        .foregroundColor(.gray)
-                        .italic()
-                } else {
-                    ForEach(recordedFiles, id: \.self) { file in
-                        RecordingRowView(
-                            file: file,
-                            audioService: audioService,
-                            selectedFile: $selectedFile,
-                            selectedFileTranscription: $selectedFileTranscription,
-                            isTranscribingFile: $isTranscribingFile,
-                            isPlaying: $isPlaying,
-                            audioPlayer: $audioPlayer,
-                            recordedFiles: $recordedFiles
-                        )
+        GeometryReader { geometry in
+            #if os(iOS)
+            // Mobile layout - use tabs or navigation for better UX
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
+                        Text("Recordings")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Spacer()
+                        
+                        Text("\(recordedFiles.count) files")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Button(action: {
+                            stopPlayback()
+                            dismiss()
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .accessibilityLabel("Close Recordings List")
+                        .accessibilityHint("Double tap to close the recordings list.")
                     }
-                    .onDelete(perform: deleteRecordings)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(.secondarySystemBackground))
+                    
+                    if selectedFile == nil {
+                        // Show recordings list when no file is selected
+                        if recordedFiles.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "waveform.circle")
+                                    .font(.system(size: 64))
+                                    .foregroundColor(.gray.opacity(0.5))
+                                
+                                Text("No recordings yet")
+                                    .font(.title3)
+                                    .foregroundColor(.gray)
+                                
+                                Text("Start recording to see your audio files here")
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
+                                LazyVStack(spacing: 8) {
+                                    ForEach(recordedFiles, id: \.self) { file in
+                                        EnhancedRecordingRowView(
+                                            file: file,
+                                            audioService: audioService,
+                                            selectedFile: $selectedFile,
+                                            selectedFileTranscription: $selectedFileTranscription,
+                                            isTranscribingFile: $isTranscribingFile,
+                                            isPlaying: $isPlaying,
+                                            audioPlayer: $audioPlayer,
+                                            currentTime: $currentTime,
+                                            duration: $duration,
+                                            playbackTimer: $playbackTimer,
+                                            recordedFiles: $recordedFiles,
+                                            onFileSelected: { selectedFile in
+                                                loadTranscriptForFile(selectedFile)
+                                            }
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                            }
+                        }
+                    } else {
+                        // Show player when file is selected
+                        VStack(spacing: 0) {
+                            // Back button and file info
+                            HStack {
+                                Button(action: {
+                                    selectedFile = nil
+                                    stopPlayback()
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "chevron.left")
+                                        Text("Back")
+                                    }
+                                    .font(.body)
+                                    .foregroundColor(.accentColor)
+                                }
+                                .accessibilityLabel("Back to Recordings List")
+                                .accessibilityHint("Double tap to return to the list of recordings.")
+                                
+                                Spacer()
+                                
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text("Now Playing")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text(selectedFile!.lastPathComponent.replacingOccurrences(of: ".caf", with: ""))
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color(.secondarySystemBackground))
+                            
+                            Divider()
+                            
+                            // Audio player controls
+                            AudioPlayerView(
+                                isPlaying: $isPlaying,
+                                currentTime: $currentTime,
+                                duration: $duration,
+                                audioPlayer: audioPlayer,
+                                onSeek: { time in
+                                    audioPlayer?.currentTime = time
+                                    currentTime = time
+                                }
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            
+                            Divider()
+                            
+                            // Transcript section
+                            TranscriptView(
+                                selectedFile: selectedFile!,
+                                transcription: selectedFileTranscription,
+                                isTranscribing: isTranscribingFile,
+                                audioService: audioService,
+                                onTranscribe: {
+                                    transcribeSelectedFile()
+                                }
+                            )
+                        }
+                    }
+                }
+            } else {
+                // iPad layout - use side-by-side
+                tabletLayout(geometry: geometry)
+            }
+            #else
+            // macOS layout
+            tabletLayout(geometry: geometry)
+            #endif
+        }
+        .onDisappear {
+            stopPlayback()
+        }
+        .onAppear {
+            // Refresh recordings when view appears
+            recordedFiles = audioService.getRecordedFiles()
+        }
+        // .onKeyPress(.escape) - iOS 17+ only
+    }
+    
+    // Tablet/Desktop layout function
+    @ViewBuilder
+    private func tabletLayout(geometry: GeometryProxy) -> some View {
+        HStack(spacing: 0) {
+            // Left side - Recordings list
+            VStack(spacing: 0) {
+                // Header with close button
+                HStack {
+                    Text("Recordings")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Spacer()
+                    
+                    Text("\(recordedFiles.count) files")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer().frame(width: 16)
+                    
+                    Button(action: {
+                        stopPlayback()
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Close (ESC)")
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(Color.gray.opacity(0.1))
+                
+                Divider()
+                
+                // Recordings list
+                if recordedFiles.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "waveform.circle")
+                            .font(.system(size: 64))
+                            .foregroundColor(.gray.opacity(0.5))
+                        
+                        Text("No recordings yet")
+                            .font(.title3)
+                            .foregroundColor(.gray)
+                        
+                        Text("Start recording to see your audio files here")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 1) {
+                            ForEach(recordedFiles, id: \.self) { file in
+                                EnhancedRecordingRowView(
+                                    file: file,
+                                    audioService: audioService,
+                                    selectedFile: $selectedFile,
+                                    selectedFileTranscription: $selectedFileTranscription,
+                                    isTranscribingFile: $isTranscribingFile,
+                                    isPlaying: $isPlaying,
+                                    audioPlayer: $audioPlayer,
+                                    currentTime: $currentTime,
+                                    duration: $duration,
+                                    playbackTimer: $playbackTimer,
+                                    recordedFiles: $recordedFiles,
+                                    onFileSelected: { selectedFile in
+                                        loadTranscriptForFile(selectedFile)
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
                 }
             }
-            .navigationTitle("Recordings")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: toolbarPlacement) {
-                    Button("Done") {
-                        dismiss()
+            .frame(width: geometry.size.width * 0.45)
+            .background(Color.clear)
+            
+            Divider()
+            
+            // Right side - Player and transcript
+            VStack(spacing: 0) {
+                if let selectedFile = selectedFile {
+                    // Player header
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Now Playing")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Text(selectedFile.lastPathComponent.replacingOccurrences(of: ".caf", with: ""))
+                                .font(.headline)
+                                .lineLimit(1)
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: { 
+                            self.selectedFile = nil 
+                            stopPlayback()
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(Color.gray.opacity(0.1))
+                    
+                    Divider()
+                    
+                    // Audio player controls
+                    AudioPlayerView(
+                        isPlaying: $isPlaying,
+                        currentTime: $currentTime,
+                        duration: $duration,
+                        audioPlayer: audioPlayer,
+                        onSeek: { time in
+                            audioPlayer?.currentTime = time
+                            currentTime = time
+                        }
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    
+                    Divider()
+                    
+                    // Transcript section
+                    TranscriptView(
+                        selectedFile: selectedFile,
+                        transcription: selectedFileTranscription,
+                        isTranscribing: isTranscribingFile,
+                        audioService: audioService,
+                        onTranscribe: {
+                            transcribeSelectedFile()
+                        }
+                    )
+                } else {
+                    // Empty state
+                    VStack(spacing: 24) {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 80))
+                            .foregroundColor(.gray.opacity(0.3))
+                        
+                        VStack(spacing: 8) {
+                            Text("Select a recording")
+                                .font(.title2)
+                                .foregroundColor(.primary)
+                            
+                            Text("Choose a recording from the list to play and view its transcript")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .frame(width: geometry.size.width * 0.55)
+            .background(Color.clear)
+        }
+    }
+    
+    private func transcribeSelectedFile() {
+        guard let file = selectedFile else { return }
+        
+        // Check if we're already transcribing this file
+        if transcriptStatus[file] == .generating {
+            return
+        }
+        
+        transcriptStatus[file] = .generating
+        isTranscribingFile = true
+        selectedFileTranscription = ""
+        
+        audioService.transcribeAudioFile(url: file) { transcription in
+            DispatchQueue.main.async {
+                self.isTranscribingFile = false
+                
+                if let transcription = transcription, !transcription.isEmpty {
+                    self.transcriptCache[file] = transcription
+                    self.transcriptStatus[file] = .available
+                    self.selectedFileTranscription = transcription
+                    self.saveTranscriptToDisk(file: file, transcript: transcription)
+                } else {
+                    self.transcriptStatus[file] = .failed
+                    self.selectedFileTranscription = "Transcription failed. Please try again."
                 }
             }
         }
     }
     
-    private var toolbarPlacement: ToolbarItemPlacement {
-        #if os(iOS)
-        return .navigationBarLeading
-        #else
-        return .navigation
-        #endif
+    private func loadTranscriptForFile(_ file: URL) {
+        // Check if we have a cached transcript using TranscriptManager
+        if let cachedTranscript = transcriptManager.getTranscript(for: file) {
+            selectedFileTranscription = cachedTranscript
+            transcriptStatus[file] = .available
+            return
+        }
+        
+        // No cached transcript available
+        selectedFileTranscription = ""
+        transcriptStatus[file] = .notGenerated
+    }
+    
+    private func saveTranscriptToDisk(file: URL, transcript: String) {
+        let transcriptURL = getTranscriptURL(for: file)
+        do {
+            try transcript.write(to: transcriptURL, atomically: true, encoding: .utf8)
+        } catch {
+            print("Failed to save transcript: \(error)")
+        }
+    }
+    
+    private func loadTranscriptFromDisk(file: URL) -> String? {
+        let transcriptURL = getTranscriptURL(for: file)
+        return try? String(contentsOf: transcriptURL, encoding: .utf8)
+    }
+    
+    private func getTranscriptURL(for audioFile: URL) -> URL {
+        let transcriptFilename = audioFile.deletingPathExtension().appendingPathExtension("txt")
+        return transcriptFilename
+    }
+    
+    private func stopPlayback() {
+        audioPlayer?.stop()
+        playbackTimer?.invalidate()
+        playbackTimer = nil
+        isPlaying = false
+        currentTime = 0
     }
     
     private func deleteRecordings(offsets: IndexSet) {
@@ -66,6 +429,12 @@ struct RecordingsListView: View {
             audioService.deleteRecording(url: file)
         }
         recordedFiles = audioService.getRecordedFiles()
+        
+        // If the deleted file was selected, clear selection
+        if let selectedFile = selectedFile, !recordedFiles.contains(selectedFile) {
+            self.selectedFile = nil
+            stopPlayback()
+        }
     }
 }
 
@@ -102,6 +471,9 @@ struct RecordingRowView: View {
                         .font(.title2)
                         .foregroundColor(.blue)
                 }
+                .accessibilityLabel(isPlaying && selectedFile == file ? "Pause Playback" : "Play Recording")
+                .accessibilityHint(isPlaying && selectedFile == file ? "Double tap to pause playback." : "Double tap to play this recording.")
+                .accessibilityValue(isPlaying && selectedFile == file ? "Playing" : "Paused")
                 
                 // Transcribe button
                 Button(action: {
@@ -117,6 +489,8 @@ struct RecordingRowView: View {
                     }
                 }
                 .disabled(isTranscribingFile && selectedFile == file)
+                .accessibilityLabel("Transcribe Recording")
+                .accessibilityHint("Double tap to transcribe this audio file.")
             }
             
             // Show transcription if available

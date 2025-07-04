@@ -20,7 +20,9 @@ xcodebuild build -project "$WORKSPACE_OR_PROJECT" \
     -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5' \
     -configuration Debug \
     IPHONEOS_DEPLOYMENT_TARGET=15.0 \
-    SDKROOT=iphonesimulator
+    SDKROOT=iphonesimulator \
+    INFOPLIST_KEY_NSSpeechRecognitionUsageDescription="This app uses speech recognition to transcribe recorded audio into text." \
+    INFOPLIST_KEY_NSMicrophoneUsageDescription="This app needs microphone access to record audio for transcription."
 
 if [ $? -eq 0 ]; then
     echo "✅ Build successful!"
@@ -37,8 +39,29 @@ if [ $? -eq 0 ]; then
     
     echo "📂 App path: $APP_PATH"
     
+    # Check if app exists, if not try the correct iOS simulator path
+    if [ ! -d "$APP_PATH" ]; then
+        # Try the iOS simulator specific path
+        PARENT_DIR=$(dirname "$DERIVED_DATA_PATH")
+        APP_PATH="$PARENT_DIR/Debug-iphonesimulator/$PROJECT_NAME.app"
+        echo "📂 Trying iOS simulator path: $APP_PATH"
+    fi
+    
     # Install app on simulator
-    xcrun simctl install "iPhone 16 Pro" "$APP_PATH"
+    if [ -d "$APP_PATH" ]; then
+        xcrun simctl install "iPhone 16 Pro" "$APP_PATH"
+    else
+        echo "❌ App not found at expected paths. Looking for app..."
+        find "$(dirname "$DERIVED_DATA_PATH")" -name "$PROJECT_NAME.app" -type d | head -1
+        APP_PATH=$(find "$(dirname "$DERIVED_DATA_PATH")" -name "$PROJECT_NAME.app" -type d | head -1)
+        if [ -n "$APP_PATH" ]; then
+            echo "📂 Found app at: $APP_PATH"
+            xcrun simctl install "iPhone 16 Pro" "$APP_PATH"
+        else
+            echo "❌ Could not find built app"
+            exit 1
+        fi
+    fi
     
     # Launch app
     BUNDLE_ID=$(defaults read "$APP_PATH/Info.plist" CFBundleIdentifier 2>/dev/null || echo "Yashwanth.AudioTranscriber")

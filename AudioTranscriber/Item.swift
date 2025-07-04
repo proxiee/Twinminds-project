@@ -6,10 +6,10 @@
 //
 
 import Foundation
-import SwiftData
 
-@Model
-final class Item {
+// Simple data model for now - will be enhanced with proper SwiftData when targeting iOS 17+
+struct Item: Identifiable, Codable {
+    let id = UUID()
     var timestamp: Date
     
     init(timestamp: Date) {

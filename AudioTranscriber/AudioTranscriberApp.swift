@@ -10,23 +10,23 @@ import SwiftData
 
 @main
 struct AudioTranscriberApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-
+    @StateObject private var audioService = AudioService()
+    @StateObject private var swiftDataManager = SwiftDataManager.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(audioService)
+                .environmentObject(swiftDataManager)
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(for: [RecordingSession.self, TranscriptionSegment.self])
+    }
+    
+    static func registerTerminationObserver(audioService: AudioService) {
+        NotificationCenter.default.addObserver(forName: UIApplication.willTerminateNotification, object: nil, queue: .main) { [weak audioService] _ in
+            Task { @MainActor in
+                audioService?.applicationWillTerminate()
+            }
+        }
     }
 }
