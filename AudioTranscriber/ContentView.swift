@@ -226,6 +226,8 @@ struct ContentView: View {
             .padding()
             .navigationTitle("Audio Transcriber")
             .onAppear {
+                AudioTranscriberApp.registerTerminationObserver(audioService: audioService)
+                audioService.checkForPartialRecordingsAndRecover()
                 loadRecordings()
             }
         }

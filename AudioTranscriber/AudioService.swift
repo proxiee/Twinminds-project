@@ -776,6 +776,11 @@ class AudioService: ObservableObject {
     // MARK: - Legacy Single Recording (kept for compatibility)
     
     func startRecording() {
+        guard hasSufficientStorage() else {
+            interruptionStatus = "❌ Not enough storage to start recording."
+            clearInterruptionStatusAfterDelay()
+            return
+        }
         // Prevent starting a new recording if already recording
         guard !isRecording else {
             logger.logWarning("Attempted to start a new recording while already recording.")
@@ -1391,6 +1396,57 @@ class AudioService: ObservableObject {
                 logger.logError("Failed to resume audio engine", error: error)
                 stopRecording()
             }
+        }
+    }
+
+    // MARK: - Storage Check
+    private func hasSufficientStorage(minimumRequiredMB: Int = 20) -> Bool {
+        let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        if let values = try? fileURL.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
+           let available = values.volumeAvailableCapacityForImportantUsage {
+            return available > Int64(minimumRequiredMB) * 1024 * 1024
+        }
+        return true // Assume true if cannot check
+    }
+
+    // During recording, periodically check storage
+    private func monitorStorageDuringRecording() {
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] timer in
+            guard let self = self, self.isRecording else { timer.invalidate(); return }
+            if !self.hasSufficientStorage() {
+                self.stopRecording()
+                self.interruptionStatus = "❌ Recording stopped: storage full."
+                self.clearInterruptionStatusAfterDelay()
+                timer.invalidate()
+            }
+        }
+    }
+
+    // Call monitorStorageDuringRecording() after starting recording
+    // ... existing code ...
+    // App termination handling
+    func applicationWillTerminate() {
+        if isRecording {
+            stopRecording()
+        }
+    }
+    // ... existing code ...
+
+    // Scan for partial recordings and offer recovery
+    @MainActor
+    func checkForPartialRecordingsAndRecover() {
+        let recordingsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        do {
+            let files = try FileManager.default.contentsOfDirectory(at: recordingsURL, includingPropertiesForKeys: nil)
+            let partials = files.filter { $0.lastPathComponent.contains("partial") }
+            if !partials.isEmpty {
+                interruptionStatus = "⚠️ Found partial recordings. Please review or delete."
+                clearInterruptionStatusAfterDelay()
+                // In a real app, you might show a UI prompt here
+                print("Found partial recordings: \(partials.map { $0.lastPathComponent })")
+            }
+        } catch {
+            print("Error scanning for partial recordings: \(error)")
         }
     }
 }
