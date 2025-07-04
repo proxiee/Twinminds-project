@@ -121,13 +121,13 @@ struct LargeCreativeWidgetView: View {
     
     var body: some View {
         ZStack {
-            Color.black
+            Color.white
             VStack(spacing: 24) {
                 Spacer(minLength: 16)
                 // Stylized waveform (SF Symbol or custom)
                 ZStack {
                     RoundedRectangle(cornerRadius: 24)
-                        .fill(Color.white.opacity(0.08))
+                        .fill(Color.black.opacity(0.08))
                         .frame(height: 120)
                         .shadow(radius: 8)
                     HStack(spacing: 0) {
@@ -153,7 +153,7 @@ struct LargeCreativeWidgetView: View {
                         if let duration = entry.recordingDuration {
                             Text(formatDuration(duration))
                                 .font(.headline)
-                                .foregroundColor(.white)
+                                .foregroundColor(.black)
                         }
                     }
                 }
@@ -165,25 +165,25 @@ struct LargeCreativeWidgetView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "music.note")
                                     .font(.caption)
-                                    .foregroundColor(.white.opacity(0.8))
+                                    .foregroundColor(.black.opacity(0.8))
                                 Text(session.title)
                                     .font(.caption)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.black)
                                     .lineLimit(1)
                                 Text(formatDuration(session.duration))
                                     .font(.caption2)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundColor(.black.opacity(0.7))
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color.white.opacity(0.12))
+                            .background(Color.black.opacity(0.08))
                             .cornerRadius(16)
                         }
                     }
                 } else {
                     Text("No recordings yet")
                         .font(.caption2)
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.black.opacity(0.5))
                 }
                 Spacer(minLength: 16)
             }
@@ -325,7 +325,7 @@ struct MediumRowWidgetView: View {
     
     var body: some View {
         ZStack {
-            Color.black
+            Color.white
             VStack(alignment: .leading, spacing: 16) {
                 // Live status
                 HStack(spacing: 8) {
@@ -340,11 +340,8 @@ struct MediumRowWidgetView: View {
                         if let duration = entry.recordingDuration {
                             Text(formatDuration(duration))
                                 .font(.headline)
-                                .foregroundColor(.white)
+                                .foregroundColor(.black)
                         }
-                    } else {
-                        Image(systemName: "mic.slash")
-                            .foregroundColor(.gray)
                     }
                 }
                 // Buttons
