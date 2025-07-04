@@ -24,6 +24,15 @@ struct ContentView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .zIndex(2)
                 }
+                
+                // Network status indicator
+                HStack {
+                    Spacer()
+                    NetworkStatusView()
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
                 VStack(spacing: 20) {
                     // Permission status
                     if audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted {

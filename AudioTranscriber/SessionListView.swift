@@ -8,6 +8,10 @@ struct SessionListView: View {
     @State private var searchText = ""
     @State private var sortOption: SortOption = .dateDescending
     @State private var filterOption: FilterOption = .all
+    // Pagination state
+    @State private var pageSize: Int = 20
+    @State private var currentPage: Int = 1
+    @State private var isLoadingMore: Bool = false
     
     enum SortOption: String, CaseIterable, Identifiable {
         case dateDescending = "Newest"
@@ -28,11 +32,8 @@ struct SessionListView: View {
         NavigationView {
             VStack {
                 HStack {
-                    TextField("Search sessions", text: $searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding(.horizontal)
-                        .accessibilityLabel("Search Sessions")
-                        .accessibilityHint("Enter text to search sessions by name, date, or transcript.")
+                    SearchBar(text: $searchText, placeholder: "Search sessions...")
+                    
                     Menu {
                         Picker("Sort by", selection: $sortOption) {
                             ForEach(SortOption.allCases) { option in
@@ -56,6 +57,11 @@ struct SessionListView: View {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                             .font(.title2)
                     }
+                    
+                    Spacer()
+                    
+                    // Network status for transcription
+                    NetworkStatusBadge()
                 }
                 .padding(.horizontal)
                 if dataManager.sessions.isEmpty {
@@ -76,27 +82,37 @@ struct SessionListView: View {
                     .padding()
                 } else {
                     List {
-                        ForEach(filteredSessions) { session in
+                        ForEach(pagedSessions) { session in
                             SessionRowView(session: session) {
                                 selectedSession = session
                                 showingSessionDetail = true
                             }
                             .accessibilityLabel("Session: \(session.baseFileName)")
                             .accessibilityHint("Double tap to view session details.")
+                            .onAppear {
+                                // If this is the last item, load more
+                                if session == pagedSessions.last && !isLoadingMore && pagedSessions.count < filteredSessions.count {
+                                    loadMoreSessions()
+                                }
+                            }
                         }
                         .onDelete(perform: deleteSessions)
+                        if isLoadingMore {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                Spacer()
+                            }
+                        }
+                    }
+                    .refreshable {
+                        currentPage = 1
+                        dataManager.refreshSessions()
                     }
                 }
             }
             .navigationTitle("Recording Sessions")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Refresh") {
-                        dataManager.refreshSessions()
-                    }
-                }
-            }
             .onAppear {
                 dataManager.refreshSessions()
             }
@@ -146,6 +162,20 @@ struct SessionListView: View {
         }
         dataManager.refreshSessions()
     }
+    
+    // Pagination logic
+    private var pagedSessions: [RecordingSession] {
+        let end = min(currentPage * pageSize, filteredSessions.count)
+        return Array(filteredSessions.prefix(end))
+    }
+    private func loadMoreSessions() {
+        guard !isLoadingMore else { return }
+        isLoadingMore = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            currentPage += 1
+            isLoadingMore = false
+        }
+    }
 }
 
 struct SessionRowView: View {
@@ -191,6 +221,9 @@ struct SessionRowView: View {
                         color: session.completedTranscriptionCount == session.segmentCount ? .green : .orange
                     )
                 }
+                
+                // Compact transcription progress
+                CompactTranscriptionProgressView(session: session)
                 
                 // Preview of combined transcription
                 if !session.combinedTranscription.isEmpty {
@@ -272,6 +305,9 @@ struct SessionDetailView: View {
                     .padding()
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(12)
+                    
+                    // Enhanced transcription progress
+                    TranscriptionProgressView(session: session)
                     
                     // Segments
                     VStack(alignment: .leading, spacing: 12) {
@@ -426,6 +462,35 @@ extension RecordingSession {
     }
     var isFullyTranscribed: Bool {
         !segments.isEmpty && segments.allSatisfy { $0.transcriptionStatus == "completed" }
+    }
+}
+
+// MARK: - SearchBar Component
+struct SearchBar: View {
+    @Binding var text: String
+    let placeholder: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+            
+            TextField(placeholder, text: $text)
+                .textFieldStyle(PlainTextFieldStyle())
+            
+            if !text.isEmpty {
+                Button(action: {
+                    text = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
     }
 }
 

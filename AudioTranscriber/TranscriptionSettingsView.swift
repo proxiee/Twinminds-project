@@ -25,6 +25,14 @@ struct TranscriptionSettingsView: View {
                     Text("Choose how audio should be transcribed")
                         .font(.subheadline)
                         .foregroundColor(.gray)
+                    
+                    // Network status for transcription services
+                    HStack {
+                        NetworkStatusBadge()
+                        Text("• Transcription services require internet connection")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding(.top)
                 
