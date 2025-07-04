@@ -724,13 +724,18 @@ class AudioService: ObservableObject {
     // MARK: - Legacy Single Recording (kept for compatibility)
     
     func startRecording() {
+        // Prevent starting a new recording if already recording
+        guard !isRecording else {
+            logger.logWarning("Attempted to start a new recording while already recording.")
+            return
+        }
         if UserDefaults.standard.bool(forKey: "useSegmentedRecording") {
             startSegmentedRecording()
         } else {
             startLegacyRecording()
         }
     }
-    
+
     func stopRecording() {
         if UserDefaults.standard.bool(forKey: "useSegmentedRecording") {
             stopSegmentedRecording()
@@ -738,7 +743,7 @@ class AudioService: ObservableObject {
             stopLegacyRecording()
         }
     }
-    
+
     func startLegacyRecording() {
         logger.logInfo("🎙️ Starting legacy single-file recording...")
         
@@ -1278,6 +1283,7 @@ class AudioService: ObservableObject {
             return
         }
         
+        print("🎯 AudioService received widget action: \(action.rawValue)")
         logger.logInfo("📱 Handling widget action: \(action.rawValue)")
         
         switch action {

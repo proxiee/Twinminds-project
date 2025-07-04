@@ -109,340 +109,87 @@ struct AudioTranscriberWidgetProvider: TimelineProvider {
 // MARK: - Widget View
 struct AudioTranscriberWidgetView: View {
     let entry: WidgetTimelineEntry
-    @Environment(\.widgetFamily) var family
     
     var body: some View {
-        switch family {
-        case .systemSmall:
-            SmallWidgetView(entry: entry)
-        case .systemMedium:
-            MediumWidgetView(entry: entry)
-        case .systemLarge:
-            LargeWidgetView(entry: entry)
-        default:
-            SmallWidgetView(entry: entry)
-        }
+        LargeCreativeWidgetView(entry: entry)
     }
 }
 
-// MARK: - Small Widget View
-struct SmallWidgetView: View {
+// MARK: - Large Creative Widget View
+struct LargeCreativeWidgetView: View {
     let entry: WidgetTimelineEntry
     
     var body: some View {
-        Button(action: {
-            // Toggle recording state
-            WidgetDataService.shared.setPendingAction(.toggleRecording)
-        }) {
-            VStack(spacing: 8) {
-                HStack {
-                    Image(systemName: "waveform")
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                    
-                    Spacer()
-                    
-                    if entry.isRecording {
-                        Image(systemName: "record.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.red)
-                            .scaleEffect(1.2)
+        ZStack {
+            Color.black
+            VStack(spacing: 24) {
+                Spacer(minLength: 16)
+                // Stylized waveform (SF Symbol or custom)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 120)
+                        .shadow(radius: 8)
+                    HStack(spacing: 0) {
+                        ForEach(0..<12) { i in
+                            Capsule()
+                                .fill(entry.isRecording ? Color.red : Color.blue)
+                                .frame(width: 10, height: CGFloat.random(in: 40...100))
+                                .opacity(0.7)
+                        }
                     }
                 }
-                
-                Spacer()
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("AudioTranscriber")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                    
-                    if entry.isRecording {
+                .padding(.horizontal, 24)
+                // Live status
+                if entry.isRecording {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 14, height: 14)
+                        Text("Recording…")
+                            .font(.headline)
+                            .foregroundColor(.red)
+                            .fontWeight(.semibold)
                         if let duration = entry.recordingDuration {
                             Text(formatDuration(duration))
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .fontWeight(.medium)
-                        } else {
-                            Text("Recording...")
-                                .font(.caption)
-                                .foregroundColor(.red)
+                                .font(.headline)
+                                .foregroundColor(.white)
                         }
-                    } else if let currentSession = entry.currentSessionTitle {
-                        Text(currentSession)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    } else {
-                        Text("\(entry.sessions.count) recordings")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer()
+                // Recent recordings as chips
+                if !entry.sessions.isEmpty {
+                    HStack(spacing: 10) {
+                        ForEach(entry.sessions.prefix(3), id: \.id) { session in
+                            HStack(spacing: 4) {
+                                Image(systemName: "music.note")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.8))
+                                Text(session.title)
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .lineLimit(1)
+                                Text(formatDuration(session.duration))
+                                    .font(.caption2)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.12))
+                            .cornerRadius(16)
+                        }
+                    }
+                } else {
+                    Text("No recordings yet")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                Spacer(minLength: 16)
             }
             .padding()
-            .background(Color(.systemBackground))
         }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-// MARK: - Medium Widget View
-struct MediumWidgetView: View {
-    let entry: WidgetTimelineEntry
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: "waveform")
-                    .font(.title2)
-                    .foregroundColor(.blue)
-                
-                Text("AudioTranscriber")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                if entry.isRecording {
-                    HStack(spacing: 4) {
-                        Image(systemName: "record.circle.fill")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .scaleEffect(1.1)
-                        Text("Recording")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .fontWeight(.medium)
-                    }
-                }
-            }
-            
-            if entry.isRecording {
-                // Recording controls
-                VStack(spacing: 8) {
-                    if let duration = entry.recordingDuration {
-                        Text(formatDuration(duration))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.red)
-                    }
-                    
-                    HStack(spacing: 16) {
-                        Button(action: {
-                            // Stop recording
-                            WidgetDataService.shared.setPendingAction(.stopRecording)
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "stop.circle.fill")
-                                    .font(.title3)
-                                Text("Stop")
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.red)
-                            .cornerRadius(8)
-                        }
-                        
-                        Link(destination: URL(string: "audiotranscriber://open-app")!) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "ellipsis.circle")
-                                    .font(.title3)
-                                Text("More")
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                            }
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(8)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                // Show recent sessions or start recording
-                if entry.sessions.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "mic.slash")
-                            .font(.title)
-                            .foregroundColor(.gray)
-                        
-                        Text("No recordings yet")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Button(action: {
-                            // Start recording
-                            WidgetDataService.shared.setPendingAction(.startRecording)
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "record.circle")
-                                    .font(.caption)
-                                Text("Start Recording")
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.blue)
-                            .cornerRadius(8)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    LazyVStack(spacing: 8) {
-                        ForEach(entry.sessions.prefix(3), id: \.id) { session in
-                            SessionRowView(session: session)
-                        }
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-    }
-}
-
-// MARK: - Large Widget View
-struct LargeWidgetView: View {
-    let entry: WidgetTimelineEntry
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Image(systemName: "waveform")
-                    .font(.title)
-                    .foregroundColor(.blue)
-                
-                Text("AudioTranscriber")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                if entry.isRecording {
-                    HStack(spacing: 6) {
-                        Image(systemName: "record.circle.fill")
-                            .font(.body)
-                            .foregroundColor(.red)
-                            .scaleEffect(1.1)
-                        Text("Recording")
-                            .font(.body)
-                            .fontWeight(.medium)
-                            .foregroundColor(.red)
-                    }
-                }
-            }
-            
-            if entry.isRecording {
-                // Recording controls and status
-                VStack(spacing: 12) {
-                    if let duration = entry.recordingDuration {
-                        Text(formatDuration(duration))
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.red)
-                    }
-                    
-                    HStack(spacing: 16) {
-                        Button(action: {
-                            // Stop recording
-                            WidgetDataService.shared.setPendingAction(.stopRecording)
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "stop.circle.fill")
-                                    .font(.title2)
-                                Text("Stop Recording")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.red)
-                            .cornerRadius(10)
-                        }
-                        
-                        Link(destination: URL(string: "audiotranscriber://open-app")!) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "ellipsis.circle")
-                                    .font(.title2)
-                                Text("More Options")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                            }
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(10)
-                        }
-                    }
-                    
-                    if let currentSession = entry.currentSessionTitle {
-                        Text(currentSession)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                // Show sessions or start recording
-                if entry.sessions.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "mic.slash")
-                            .font(.system(size: 40))
-                            .foregroundColor(.gray)
-                        
-                        Text("No recordings yet")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        Text("Start recording to see your sessions here")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                        
-                        Button(action: {
-                            // Start recording
-                            WidgetDataService.shared.setPendingAction(.startRecording)
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "record.circle")
-                                    .font(.body)
-                                Text("Start Recording")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Color.blue)
-                            .cornerRadius(10)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(entry.sessions.prefix(6), id: \.id) { session in
-                                SessionDetailRowView(session: session)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
+        .cornerRadius(32)
     }
 }
 
@@ -558,23 +305,84 @@ func formatDate(_ date: Date) -> String {
 }
 
 // MARK: - Widget Configuration
+@main
 struct AudioTranscriberWidget: Widget {
     let kind: String = "AudioTranscriberWidget"
     
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AudioTranscriberWidgetProvider()) { entry in
-            AudioTranscriberWidgetView(entry: entry)
+            MediumRowWidgetView(entry: entry)
         }
         .configurationDisplayName("AudioTranscriber")
-        .description("Quick access to your audio recordings and transcription status.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .description("View live status and recent recordings.")
+        .supportedFamilies([.systemMedium]) // Only medium widget
     }
 }
 
-// MARK: - Widget Bundle
-@main
-struct AudioTranscriberWidgetBundle: WidgetBundle {
-    var body: some Widget {
-        AudioTranscriberWidget()
+// MARK: - Medium Row Widget View
+struct MediumRowWidgetView: View {
+    let entry: WidgetTimelineEntry
+    
+    var body: some View {
+        ZStack {
+            Color.black
+            VStack(alignment: .leading, spacing: 16) {
+                // Live status
+                HStack(spacing: 8) {
+                    if entry.isRecording {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 12, height: 12)
+                        Text("Recording…")
+                            .font(.headline)
+                            .foregroundColor(.red)
+                            .fontWeight(.semibold)
+                        if let duration = entry.recordingDuration {
+                            Text(formatDuration(duration))
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                    } else {
+                        Image(systemName: "mic.slash")
+                            .foregroundColor(.gray)
+                    }
+                }
+                // Buttons
+                HStack(spacing: 16) {
+                    Link(destination: URL(string: "audiotranscriber://start-recording")!) {
+                        HStack {
+                            Image(systemName: "record.circle.fill")
+                                .font(.title2)
+                            Text("Start Recording")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.red)
+                        .cornerRadius(12)
+                    }
+                    Link(destination: URL(string: "audiotranscriber://open-app")!) {
+                        HStack {
+                            Image(systemName: "list.bullet.rectangle")
+                                .font(.title2)
+                            Text("View Recordings")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 18)
+        }
+        .cornerRadius(20)
     }
 }
+
