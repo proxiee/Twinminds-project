@@ -546,29 +546,23 @@ class AudioService: ObservableObject {
     
     private func stopCurrentSegment() {
         guard let audioEngine = audioEngine else { return }
-        
         if audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
         }
-        
         // Stop transcription for this segment
         stopRealTimeTranscription()
-        
         // Save the segment
         if let segmentURL = currentRecordingURL {
             let startTime = Double(currentSegmentIndex) * segmentDuration
             let actualDuration = min(segmentDuration, recordingProgress - startTime)
-            
             // Save to legacy recording
             let segment = AudioSegment(
                 url: segmentURL,
                 startTime: startTime,
                 duration: actualDuration
             )
-            
             currentSegmentedRecording?.addSegment(segment)
-            
             // Save to SwiftData
             if let session = currentRecordingSession {
                 _ = swiftDataManager.addSegment(
@@ -579,10 +573,15 @@ class AudioService: ObservableObject {
                     fileURL: segmentURL
                 )
             }
-            
+            // Encrypt the segment file
+            do {
+                try AudioEncryptionService.shared.encryptFile(at: segmentURL)
+                logger.logSuccess("🔒 Segment encrypted at: \(segmentURL.lastPathComponent)")
+            } catch {
+                logger.logError("Failed to encrypt segment file", error: error)
+            }
             logger.logInfo("💾 Saved segment \(currentSegmentIndex + 1): \(segmentURL.lastPathComponent)")
         }
-        
         audioFile = nil
         // Note: currentSegmentIndex is incremented in the timer, not here
     }
@@ -935,6 +934,13 @@ class AudioService: ObservableObject {
         
         // Auto-convert and copy the recording
         if let recordingURL = currentRecordingURL {
+            // Encrypt the file after recording
+            do {
+                try AudioEncryptionService.shared.encryptFile(at: recordingURL)
+                logger.logSuccess("🔒 Recording encrypted at: \(recordingURL.lastPathComponent)")
+            } catch {
+                logger.logError("Failed to encrypt recording", error: error)
+            }
             convertAndCopyRecording(cafURL: recordingURL)
         }
         
@@ -1443,6 +1449,16 @@ class AudioService: ObservableObject {
             }
         } catch {
             print("Error scanning for partial recordings: \(error)")
+        }
+    }
+
+    // When reading a file for playback or transcription, decrypt it first
+    func getDecryptedAudioData(for url: URL) -> Data? {
+        do {
+            return try AudioEncryptionService.shared.decryptFile(at: url)
+        } catch {
+            logger.logError("Failed to decrypt audio file", error: error)
+            return nil
         }
     }
 }

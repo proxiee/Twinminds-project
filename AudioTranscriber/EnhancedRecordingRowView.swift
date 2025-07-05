@@ -251,11 +251,21 @@ struct EnhancedRecordingRowView: View {
             print("Error getting file size: \(error)")
         }
         
-        // Get audio duration
+        // Get audio duration - decrypt file first
         do {
-            let audioPlayer = try AVAudioPlayer(contentsOf: file)
+            // Decrypt the file data
+            let decryptedData = try AudioEncryptionService.shared.decryptFile(at: file)
+            
+            // Create temporary file for AVAudioPlayer
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+            try decryptedData.write(to: tempURL)
+            
+            let audioPlayer = try AVAudioPlayer(contentsOf: tempURL)
             let duration = audioPlayer.duration
             fileDuration = formatDuration(duration)
+            
+            // Clean up temp file
+            try? FileManager.default.removeItem(at: tempURL)
         } catch {
             fileDuration = "Unknown"
         }
@@ -318,8 +328,15 @@ struct EnhancedRecordingRowView: View {
                 // Set selected file first
                 selectedFile = file
                 
+                // Decrypt the file data
+                let decryptedData = try AudioEncryptionService.shared.decryptFile(at: file)
+                
+                // Create temporary file for AVAudioPlayer
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+                try decryptedData.write(to: tempURL)
+                
                 // Create and configure audio player
-                let player = try AVAudioPlayer(contentsOf: file)
+                let player = try AVAudioPlayer(contentsOf: tempURL)
                 
                 #if os(iOS)
                 // Configure audio session for iOS
@@ -348,6 +365,9 @@ struct EnhancedRecordingRowView: View {
                         isPlaying = false
                         playbackTimer?.invalidate()
                         currentTime = 0
+                        
+                        // Clean up temp file
+                        try? FileManager.default.removeItem(at: tempURL)
                     }
                 }
                 

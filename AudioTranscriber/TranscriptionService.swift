@@ -101,47 +101,64 @@ class TranscriptionService: ObservableObject {
             return
         }
         
-        let request = SFSpeechURLRecognitionRequest(url: fileURL)
-        request.shouldReportPartialResults = false
-        
-        // Add timeout to prevent hanging
-        var hasCompleted = false
-        let timeoutSeconds = 30.0
-        
-        let timeoutTimer = Timer.scheduledTimer(withTimeInterval: timeoutSeconds, repeats: false) { _ in
-            if !hasCompleted {
-                hasCompleted = true
-                completion(.failure("Local transcription timed out after \(Int(timeoutSeconds)) seconds", .local))
-            }
-        }
-        
-        speechRecognizer.recognitionTask(with: request) { result, error in
-            DispatchQueue.main.async {
-                guard !hasCompleted else { return }
-                hasCompleted = true
-                timeoutTimer.invalidate()
-                
-                if let error = error {
-                    self.logger.logError("Local transcription error: \(error.localizedDescription)")
-                    completion(.failure("Local transcription failed: \(error.localizedDescription)", .local))
-                    return
+        // Decrypt the file data first
+        do {
+            let decryptedData = try AudioEncryptionService.shared.decryptFile(at: fileURL)
+            
+            // Create temporary file for speech recognition
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+            try decryptedData.write(to: tempURL)
+            
+            let request = SFSpeechURLRecognitionRequest(url: tempURL)
+            request.shouldReportPartialResults = false
+            
+            // Add timeout to prevent hanging
+            var hasCompleted = false
+            let timeoutSeconds = 30.0
+            
+            let timeoutTimer = Timer.scheduledTimer(withTimeInterval: timeoutSeconds, repeats: false) { _ in
+                if !hasCompleted {
+                    hasCompleted = true
+                    // Clean up temp file
+                    try? FileManager.default.removeItem(at: tempURL)
+                    completion(.failure("Local transcription timed out after \(Int(timeoutSeconds)) seconds", .local))
                 }
-                
-                if let result = result {
-                    let transcription = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            
+            speechRecognizer.recognitionTask(with: request) { result, error in
+                DispatchQueue.main.async {
+                    guard !hasCompleted else { return }
+                    hasCompleted = true
+                    timeoutTimer.invalidate()
                     
-                    if transcription.isEmpty {
-                        completion(.success("[No speech detected]", .local))
-                    } else {
-                        // Cache the successful transcription
-                        TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
-                        self.logger.logSuccess("✅ Local transcription completed")
-                        completion(.success(transcription, .local))
+                    // Clean up temp file
+                    try? FileManager.default.removeItem(at: tempURL)
+                    
+                    if let error = error {
+                        self.logger.logError("Local transcription error: \(error.localizedDescription)")
+                        completion(.failure("Local transcription failed: \(error.localizedDescription)", .local))
+                        return
                     }
-                } else {
-                    completion(.failure("No transcription result from local service", .local))
+                    
+                    if let result = result {
+                        let transcription = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        if transcription.isEmpty {
+                            completion(.success("[No speech detected]", .local))
+                        } else {
+                            // Cache the successful transcription
+                            TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
+                            self.logger.logSuccess("✅ Local transcription completed")
+                            completion(.success(transcription, .local))
+                        }
+                    } else {
+                        completion(.failure("No transcription result from local service", .local))
+                    }
                 }
             }
+        } catch {
+            logger.logError("Failed to decrypt audio file for transcription", error: error)
+            completion(.failure("Failed to decrypt audio file: \(error.localizedDescription)", .local))
         }
     }
     
@@ -156,18 +173,33 @@ class TranscriptionService: ObservableObject {
             return
         }
         
-        openAIService.transcribeAudio(fileURL: fileURL) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let transcription):
-                    // Cache the successful transcription
-                    TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
-                    completion(.success(transcription, .openAI))
-                    
-                case .failure(let error):
-                    completion(.failure(error.localizedDescription ?? "OpenAI transcription failed", .openAI))
+        // Decrypt the file data first
+        do {
+            let decryptedData = try AudioEncryptionService.shared.decryptFile(at: fileURL)
+            
+            // Create temporary file for OpenAI
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+            try decryptedData.write(to: tempURL)
+            
+            openAIService.transcribeAudio(fileURL: tempURL) { result in
+                // Clean up temp file
+                try? FileManager.default.removeItem(at: tempURL)
+                
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let transcription):
+                        // Cache the successful transcription
+                        TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
+                        completion(.success(transcription, .openAI))
+                        
+                    case .failure(let error):
+                        completion(.failure(error.localizedDescription, .openAI))
+                    }
                 }
             }
+        } catch {
+            logger.logError("Failed to decrypt audio file for transcription", error: error)
+            completion(.failure("Failed to decrypt audio file: \(error.localizedDescription)", .openAI))
         }
     }
     
