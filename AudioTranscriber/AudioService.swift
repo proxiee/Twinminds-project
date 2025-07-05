@@ -92,6 +92,8 @@ class AudioService: ObservableObject {
     
     @Published var isPaused = false
     
+    private let qualityManager = AudioQualityManager.shared
+    
     init() {
         logger.logInfo("🚀 AudioService initialization started")
         
@@ -496,20 +498,12 @@ class AudioService: ObservableObject {
         
         let inputNode = audioEngine.inputNode
         
-        // Get the input node's native format to avoid format mismatches
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-        logger.logInfo("📊 Segment input format: \(inputFormat.description)")
+        // ALWAYS use the input node's native format - this is the key fix!
+        let nativeFormat = inputNode.outputFormat(forBus: 0)
+        logger.logInfo("📊 Using native input format: \(nativeFormat.description)")
         
-        // Use the input format for recording to avoid format mismatches
-        let recordingFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                           sampleRate: inputFormat.sampleRate,
-                                           channels: 1,
-                                           interleaved: false) ?? inputFormat
-        
-        logger.logInfo("📊 Segment recording format: \(recordingFormat.description)")
-        
-        // Connect input to mixer using the input format
-        audioEngine.connect(inputNode, to: audioEngine.mainMixerNode, format: inputFormat)
+        // Connect input to mixer using the native format
+        audioEngine.connect(inputNode, to: audioEngine.mainMixerNode, format: nativeFormat)
         
         // Create segment file
         guard let segmentURL = createSegmentFileURL() else {
@@ -520,12 +514,14 @@ class AudioService: ObservableObject {
         currentRecordingURL = segmentURL
         
         do {
-            audioFile = try AVAudioFile(forWriting: segmentURL, settings: recordingFormat.settings)
+            // Use native format for the audio file too - this ensures compatibility
+            audioFile = try AVAudioFile(forWriting: segmentURL, settings: nativeFormat.settings)
             
             // Setup real-time transcription for this segment
-            startRealTimeTranscription(format: recordingFormat)
+            startRealTimeTranscription(format: nativeFormat)
             
-            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] (buffer, when) in
+            // Install tap with the native format - this is crucial!
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: nativeFormat) { [weak self] (buffer, when) in
                 do {
                     try self?.audioFile?.write(from: buffer)
                     self?.recognitionRequest?.append(buffer)
@@ -540,6 +536,11 @@ class AudioService: ObservableObject {
             
         } catch {
             logger.logError("Error starting segment recording", error: error)
+            // Stop recording if there's an error
+            DispatchQueue.main.async {
+                self.isRecording = false
+                self.currentSegmentedRecording?.isRecording = false
+            }
         }
     }
     
@@ -588,8 +589,8 @@ class AudioService: ObservableObject {
     
     private func createSegmentFileURL() -> URL? {
         guard let recording = currentSegmentedRecording else { return nil }
-        
         let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        // Use .caf extension for native format compatibility
         let segmentFileName = "\(recording.baseFileName)_segment_\(String(format: "%03d", currentSegmentIndex + 1)).caf"
         return documentPath.appendingPathComponent(segmentFileName)
     }
@@ -836,20 +837,12 @@ class AudioService: ObservableObject {
         logger.logInfo("Getting input node")
         let inputNode = audioEngine.inputNode
         
-        // Get the input node's native format to avoid format mismatches
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-        logger.logInfo("📊 Input format: \(inputFormat.description)")
-        
-        // Use the input format for recording to avoid format mismatches
-        let recordingFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                           sampleRate: inputFormat.sampleRate,
-                                           channels: 1,
-                                           interleaved: false) ?? inputFormat
-        
-        logger.logInfo("📊 Recording format: \(recordingFormat.description)")
+        // ALWAYS use the input node's native format - this is the key fix!
+        let nativeFormat = inputNode.outputFormat(forBus: 0)
+        logger.logInfo("📊 Using native input format: \(nativeFormat.description)")
 
-        // Explicitly connect the input to the main mixer using the input format
-        audioEngine.connect(inputNode, to: audioEngine.mainMixerNode, format: inputFormat)
+        // Connect the input to the main mixer using the native format
+        audioEngine.connect(inputNode, to: audioEngine.mainMixerNode, format: nativeFormat)
 
         // Get documents directory
         let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -858,6 +851,7 @@ class AudioService: ObservableObject {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         let timestamp = dateFormatter.string(from: Date())
+        // Use .caf extension for native format compatibility
         let fileName = "AudioTranscriber_Recording_\(timestamp).caf"
         
         let audioFileURL = documentPath.appendingPathComponent(fileName)
@@ -871,12 +865,14 @@ class AudioService: ObservableObject {
         createProjectRecordingsCopy(audioFileURL: audioFileURL, fileName: fileName)
 
         do {
-            audioFile = try AVAudioFile(forWriting: audioFileURL, settings: recordingFormat.settings)
+            // Use native format for the audio file too - this ensures compatibility
+            audioFile = try AVAudioFile(forWriting: audioFileURL, settings: nativeFormat.settings)
             
             // Setup real-time transcription
-            startRealTimeTranscription(format: recordingFormat)
+            startRealTimeTranscription(format: nativeFormat)
 
-            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] (buffer, when) in
+            // Install tap with the native format - this is crucial!
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: nativeFormat) { [weak self] (buffer, when) in
                 do {
                     try self?.audioFile?.write(from: buffer)
                     // Feed buffer to speech recognizer
@@ -885,7 +881,7 @@ class AudioService: ObservableObject {
                     // Calculate audio level for visualization
                     self?.updateAudioLevel(from: buffer)
                 } catch {
-                    print("Error writing buffer to file: \(error.localizedDescription)")
+                    self?.logger.logError("Error writing buffer to file", error: error)
                 }
             }
 
@@ -897,7 +893,7 @@ class AudioService: ObservableObject {
             }
 
         } catch {
-            print("Error starting recording: \(error.localizedDescription)")
+            logger.logError("Error starting recording", error: error)
             stopLegacyRecording()
         }
     }

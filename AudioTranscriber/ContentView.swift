@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var showingSessions = false
     @State private var showingHelp = false
+    @State private var showingAudioQuality = false
     
     private let logger = DebugLogger.shared
 
@@ -276,6 +277,21 @@ struct ContentView: View {
                             }
                             .accessibilityLabel("Show Help and Onboarding")
                             .accessibilityHint("Double tap to view help and tips for using the app.")
+                            
+                            Button(action: { showingAudioQuality = true }) {
+                                VStack {
+                                    Image(systemName: "waveform")
+                                        .font(.title2)
+                                    Text("Quality")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 75, height: 60)
+                                .background(Color.orange)
+                                .cornerRadius(12)
+                            }
+                            .accessibilityLabel("Show Audio Quality Settings")
+                            .accessibilityHint("Double tap to configure audio recording quality and format.")
                         }
                     }
                 }
@@ -315,6 +331,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingHelp) {
             OnboardingHelpView()
+        }
+        .sheet(isPresented: $showingAudioQuality) {
+            AudioQualitySettingsView()
         }
     }
     
