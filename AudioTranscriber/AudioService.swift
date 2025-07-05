@@ -94,6 +94,8 @@ class AudioService: ObservableObject {
     
     private let qualityManager = AudioQualityManager.shared
     
+    @Published var noiseReductionEnabled: Bool = false
+    
     init() {
         logger.logInfo("🚀 AudioService initialization started")
         
@@ -522,12 +524,17 @@ class AudioService: ObservableObject {
             
             // Install tap with the native format - this is crucial!
             inputNode.installTap(onBus: 0, bufferSize: 1024, format: nativeFormat) { [weak self] (buffer, when) in
+                guard let self = self else { return }
+                var processedBuffer = buffer
+                if self.noiseReductionEnabled {
+                    processedBuffer = self.applyNoiseReduction(to: buffer)
+                }
                 do {
-                    try self?.audioFile?.write(from: buffer)
-                    self?.recognitionRequest?.append(buffer)
-                    self?.updateAudioLevel(from: buffer)
+                    try self.audioFile?.write(from: processedBuffer)
+                    self.recognitionRequest?.append(processedBuffer)
+                    self.updateAudioLevel(from: processedBuffer)
                 } catch {
-                    self?.logger.logError("Error writing buffer to segment file", error: error)
+                    self.logger.logError("Error writing buffer to segment file", error: error)
                 }
             }
             
@@ -872,15 +879,19 @@ class AudioService: ObservableObject {
 
             // Install tap with the native format - this is crucial!
             inputNode.installTap(onBus: 0, bufferSize: 1024, format: nativeFormat) { [weak self] (buffer, when) in
+                guard let self = self else { return }
+                var processedBuffer = buffer
+                if self.noiseReductionEnabled {
+                    processedBuffer = self.applyNoiseReduction(to: buffer)
+                }
                 do {
-                    try self?.audioFile?.write(from: buffer)
+                    try self.audioFile?.write(from: processedBuffer)
                     // Feed buffer to speech recognizer
-                    self?.recognitionRequest?.append(buffer)
-                    
+                    self.recognitionRequest?.append(processedBuffer)
                     // Calculate audio level for visualization
-                    self?.updateAudioLevel(from: buffer)
+                    self.updateAudioLevel(from: processedBuffer)
                 } catch {
-                    self?.logger.logError("Error writing buffer to file", error: error)
+                    self.logger.logError("Error writing buffer to file", error: error)
                 }
             }
 
@@ -1460,6 +1471,34 @@ class AudioService: ObservableObject {
             logger.logError("Failed to decrypt audio file", error: error)
             return nil
         }
+    }
+
+    // MARK: - Custom Audio Processing (Noise Reduction)
+    private func applyNoiseReduction(to buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
+        guard let floatChannelData = buffer.floatChannelData else { return buffer }
+        let frameLength = Int(buffer.frameLength)
+        let channelCount = Int(buffer.format.channelCount)
+        let sampleRate = buffer.format.sampleRate
+        let highPassCutoff: Float = 120.0 // Hz
+        let noiseGateThreshold: Float = 0.02 // Adjust as needed
+        let alpha = exp(-2 * .pi * highPassCutoff / Float(sampleRate))
+        let oneMinusAlpha = 1 - alpha
+        let processedBuffer = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameCapacity)!
+        processedBuffer.frameLength = buffer.frameLength
+        for channel in 0..<channelCount {
+            let input = floatChannelData[channel]
+            let output = processedBuffer.floatChannelData![channel]
+            var prevY: Float = 0
+            for i in 0..<frameLength {
+                // High-pass filter (simple one-pole)
+                let x = input[i]
+                let y = alpha * prevY + oneMinusAlpha * x
+                prevY = y
+                // Noise gate
+                output[i] = abs(y) < noiseGateThreshold ? 0 : y
+            }
+        }
+        return processedBuffer
     }
 }
 

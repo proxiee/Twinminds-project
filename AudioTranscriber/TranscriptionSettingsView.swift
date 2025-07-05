@@ -6,6 +6,7 @@ struct TranscriptionSettingsView: View {
     @State private var tempAPIKey = ""
     @State private var statusMessage = ""
     @State private var statusIsError = false
+    @EnvironmentObject var audioService: AudioService
     
     private let logger = DebugLogger.shared
     

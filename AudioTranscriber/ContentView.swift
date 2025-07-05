@@ -84,6 +84,21 @@ struct ContentView: View {
                     // Recording mode toggle
                     SegmentationModeToggle(audioService: audioService)
                     
+                    // Noise Reduction toggle (custom audio processing)
+                    HStack {
+                        Image(systemName: "waveform.path.ecg")
+                            .foregroundColor(.purple)
+                        Toggle("Noise Reduction", isOn: $audioService.noiseReductionEnabled)
+                            .toggleStyle(SwitchToggleStyle(tint: .purple))
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 4)
+                    .background(Color.gray.opacity(0.15))
+                    .cornerRadius(10)
+                    
                     // Segmentation progress (shown during recording)
                     SegmentationProgressView(audioService: audioService)
                     
