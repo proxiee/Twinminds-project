@@ -1,7 +1,9 @@
 import SwiftUI
 import Speech
 
+// main screen - where all the recording magic happens
 struct ContentView: View {
+    // core audio service that does all the heavy lifting
     @StateObject private var audioService = AudioService()
     @State private var recordedFiles: [URL] = []
     @State private var showingRecordings = false
@@ -33,6 +35,7 @@ struct ContentView: View {
                     .padding(.top, 20)
                     .padding(.bottom, 10)
                 
+                // show interruption status if something went wrong
                 if let status = audioService.interruptionStatus {
                     Text(status)
                         .font(.headline)
@@ -53,7 +56,7 @@ struct ContentView: View {
                 .padding(.top, 8)
                 
                 VStack(spacing: 20) {
-                    // Permission status
+                    // Permission status - nag users if they haven't given permissions
                     if audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted {
                         VStack {
                             Text("Permissions Required")
@@ -105,6 +108,7 @@ struct ContentView: View {
                     // Recording button and audio visualization
                     VStack(spacing: 15) {
                         HStack(spacing: 30) {
+                            // pause/resume button
                             Button(action: {
                                 if audioService.isRecording {
                                     if audioService.isPaused {
@@ -123,6 +127,7 @@ struct ContentView: View {
                             .accessibilityHint("Double tap to pause or resume the current recording.")
                             .accessibilityValue(audioService.isPaused ? "Paused" : "Recording")
                             
+                            // main record/stop button
                             Button(action: {
                                 if audioService.isRecording {
                                     audioService.stopRecording()

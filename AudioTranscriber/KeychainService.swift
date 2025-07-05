@@ -1,6 +1,7 @@
 import Foundation
 import Security
 
+// stores API keys securely in the keychain
 class KeychainService {
     static let shared = KeychainService()
     
@@ -11,6 +12,7 @@ class KeychainService {
     
     // MARK: - OpenAI API Key Management
     
+    // save OpenAI API key to keychain
     func saveOpenAIKey(_ key: String) -> Bool {
         let data = key.data(using: .utf8)!
         
@@ -29,6 +31,7 @@ class KeychainService {
         return status == errSecSuccess
     }
     
+    // get OpenAI API key from keychain
     func getOpenAIKey() -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -50,6 +53,7 @@ class KeychainService {
         return key
     }
     
+    // delete OpenAI API key from keychain
     func deleteOpenAIKey() -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -61,6 +65,7 @@ class KeychainService {
         return status == errSecSuccess || status == errSecItemNotFound
     }
     
+    // check if we have an OpenAI API key
     func hasOpenAIKey() -> Bool {
         return getOpenAIKey() != nil
     }

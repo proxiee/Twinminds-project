@@ -7,6 +7,7 @@ import UIKit
 #endif
 
 // MARK: - Audio Segment Data Structures
+// holds info about each 30-second chunk of audio
 struct AudioSegment: Identifiable {
     let id = UUID()
     let url: URL
@@ -21,6 +22,7 @@ struct AudioSegment: Identifiable {
     }
 }
 
+// manages a whole recording session with multiple segments
 class SegmentedRecording: ObservableObject {
     let id = UUID()
     let startDate: Date
@@ -49,14 +51,17 @@ class SegmentedRecording: ObservableObject {
     }
 }
 
+// the main audio service - does all the heavy lifting for recording and transcription
 @MainActor
 class AudioService: ObservableObject {
+    // core audio components
     private var audioEngine: AVAudioEngine?
     private var audioFile: AVAudioFile?
     private var speechRecognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     
+    // published properties that UI can observe
     @Published var isRecording = false
     @Published var transcribedText = ""
     @Published var isTranscribing = false
@@ -75,6 +80,7 @@ class AudioService: ObservableObject {
     @Published var currentRecordingSession: RecordingSession?
     private let swiftDataManager = SwiftDataManager.shared
     
+    // internal state tracking
     private var currentRecordingURL: URL?
     private var segmentTimer: Timer?
     private var recordingStartTime: Date?
@@ -138,6 +144,7 @@ class AudioService: ObservableObject {
         #endif
     }
     
+    // check if we have permission to record and transcribe
     private func checkPermissions() {
         logger.logInfo("🔐 Requesting speech recognition authorization...")
         SFSpeechRecognizer.requestAuthorization { [weak self] authStatus in
@@ -155,6 +162,7 @@ class AudioService: ObservableObject {
         }
     }
     
+    // ask for microphone access - required for recording
     private func requestMicrophonePermission() {
         logger.logInfo("🎤 Requesting microphone permission...")
         if #available(iOS 17.0, macOS 14.0, *) {
@@ -181,6 +189,7 @@ class AudioService: ObservableObject {
     }
 
     #if os(iOS)
+    // set up audio session for background recording
     private func configureAudioSession() {
         do {
             // Configure for background recording with proper options

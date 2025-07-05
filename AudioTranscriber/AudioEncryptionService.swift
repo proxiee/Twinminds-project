@@ -2,6 +2,7 @@ import Foundation
 import CryptoKit
 import Security
 
+// encrypts audio files at rest for security
 class AudioEncryptionService {
     static let shared = AudioEncryptionService()
     private let keychainKey = "AudioTranscriberEncryptionKey"
@@ -19,6 +20,7 @@ class AudioEncryptionService {
         }
     }
 
+    // save encryption key to keychain
     private func saveKeyToKeychain(key: SymmetricKey) {
         let tag = keychainKey.data(using: .utf8)!
         let keyData = key.withUnsafeBytes { Data($0) }
@@ -32,6 +34,7 @@ class AudioEncryptionService {
         SecItemAdd(query as CFDictionary, nil)
     }
 
+    // load encryption key from keychain
     private func loadKeyFromKeychain() -> Data? {
         let tag = keychainKey.data(using: .utf8)!
         let query: [String: Any] = [

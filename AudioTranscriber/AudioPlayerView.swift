@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 
+// audio player with controls - play, pause, seek, skip
 struct AudioPlayerView: View {
     @Binding var isPlaying: Bool
     @Binding var currentTime: Double
@@ -130,18 +131,21 @@ struct AudioPlayerView: View {
         }
     }
     
+    // calculate progress bar width
     private func progressWidth(_ totalWidth: CGFloat) -> CGFloat {
         guard duration > 0 else { return 0 }
         let progress = (isDragging ? dragValue : currentTime) / duration
         return max(0, min(totalWidth, totalWidth * progress))
     }
     
+    // format time as mm:ss
     private func formatTime(_ time: Double) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
     
+    // toggle play/pause
     private func togglePlayback() {
         if isPlaying {
             audioPlayer?.pause()
@@ -152,6 +156,7 @@ struct AudioPlayerView: View {
         }
     }
     
+    // start timer to update progress
     private func startProgressTimer() {
         stopProgressTimer()
         progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
@@ -161,6 +166,7 @@ struct AudioPlayerView: View {
         }
     }
     
+    // stop the progress timer
     private func stopProgressTimer() {
         progressTimer?.invalidate()
         progressTimer = nil

@@ -1,5 +1,6 @@
 import SwiftUI
 
+// shows audio level as animated bars - like a real audio meter
 struct AudioLevelView: View {
     @ObservedObject var audioService: AudioService
     let barCount: Int = 20
@@ -17,6 +18,7 @@ struct AudioLevelView: View {
         .padding(.horizontal)
     }
     
+    // calculate how tall each bar should be based on audio level
     private func barHeight(for index: Int) -> CGFloat {
         let baseHeight: CGFloat = 4
         let maxHeight: CGFloat = 40
@@ -36,6 +38,7 @@ struct AudioLevelView: View {
         }
     }
     
+    // color code the bars - green for good levels, yellow for medium, red for too loud
     private func barColor(for index: Int) -> Color {
         let threshold = Float(index) / Float(barCount)
         let level = audioService.audioLevel

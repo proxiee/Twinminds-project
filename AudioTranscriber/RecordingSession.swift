@@ -1,6 +1,7 @@
 import SwiftData
 import Foundation
 
+// main recording session - holds all the segments and metadata
 @Model
 final class RecordingSession {
     // MARK: - Properties
@@ -22,14 +23,17 @@ final class RecordingSession {
     var segments: [TranscriptionSegment] = []
     
     // MARK: - Computed Properties
+    // total time from start to end
     var duration: TimeInterval {
         return endDate?.timeIntervalSince(startDate) ?? 0
     }
     
+    // check if any segments have transcriptions
     var hasTranscriptions: Bool {
         return segments.contains { $0.transcriptionStatus == TranscriptionStatus.completed.rawValue }
     }
     
+    // count how many segments are transcribed
     var completedTranscriptionCount: Int {
         return segments.filter { $0.transcriptionStatus == TranscriptionStatus.completed.rawValue }.count
     }
@@ -50,6 +54,7 @@ final class RecordingSession {
     }
     
     // MARK: - Methods
+    // combine all segment transcriptions into one big text
     func updateCombinedTranscription() {
         combinedTranscription = segments
             .sorted(by: { $0.startTime < $1.startTime })
@@ -58,6 +63,7 @@ final class RecordingSession {
         updatedAt = Date()
     }
     
+    // mark this session as done
     func markCompleted() {
         isCompleted = true
         endDate = Date()
@@ -67,6 +73,7 @@ final class RecordingSession {
 }
 
 // MARK: - Supporting Enums
+// different states a recording can be in
 enum RecordingStatus: String, Codable, CaseIterable {
     case recording = "recording"
     case paused = "paused"
@@ -83,6 +90,7 @@ enum RecordingStatus: String, Codable, CaseIterable {
     }
 }
 
+// different states transcription can be in
 enum TranscriptionStatus: String, Codable, CaseIterable {
     case notStarted = "not_started"
     case inProgress = "in_progress"

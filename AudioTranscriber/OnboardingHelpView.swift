@@ -1,5 +1,6 @@
 import SwiftUI
 
+// help page - shows users what this app actually does
 struct OnboardingHelpView: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
@@ -14,6 +15,7 @@ struct OnboardingHelpView: View {
                     Text("**Main Features:**")
                         .font(.headline)
                     VStack(alignment: .leading, spacing: 8) {
+                        // all the shit this app can do
                         Text("• High-quality audio recording (single file or 30s segments)")
                         Text("• Configurable audio quality (sample rate, bit depth, format)")
                         Text("• Real-time audio level visualization and waveform")
@@ -37,6 +39,7 @@ struct OnboardingHelpView: View {
                     Text("**How to Use:**")
                         .font(.headline)
                     VStack(alignment: .leading, spacing: 8) {
+                        // basic steps - pretty straightforward
                         Text("1. Tap the **Record** button to start recording.")
                         Text("2. Use the **Pause/Resume** button to temporarily halt/resume.")
                         Text("3. Tap **Stop** to finish and save.")
@@ -51,6 +54,7 @@ struct OnboardingHelpView: View {
                     Text("**Tips & Accessibility:**")
                         .font(.headline)
                     VStack(alignment: .leading, spacing: 8) {
+                        // useful stuff to know
                         Text("• All controls are VoiceOver accessible and support dynamic type.")
                         Text("• Use the widget for instant recording or session access.")
                         Text("• If interrupted (call, Siri, unplug), recording will auto-resume or recover.")
@@ -63,6 +67,7 @@ struct OnboardingHelpView: View {
                         Text("• If you lose a recording due to interruption, check for recovery prompts on next launch.")
                     }
                     
+                    // removed the help section - users can figure it out
                     // Text("**Need Help?")
                     //     .font(.headline)
                     // Text("Contact support or visit the project README for more info. Documented limitations and known issues are listed in the README.")

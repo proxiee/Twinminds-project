@@ -2,6 +2,7 @@ import Foundation
 import Network
 import SwiftUI
 
+// monitors network connectivity - needed for OpenAI API calls
 class NetworkMonitor: ObservableObject {
     static let shared = NetworkMonitor()
     
@@ -11,6 +12,7 @@ class NetworkMonitor: ObservableObject {
     @Published var isConnected = false
     @Published var connectionType: ConnectionType = .unknown
     
+    // different types of network connections
     enum ConnectionType {
         case wifi
         case cellular
@@ -40,6 +42,7 @@ class NetworkMonitor: ObservableObject {
         startMonitoring()
     }
     
+    // start watching for network changes
     private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
@@ -50,6 +53,7 @@ class NetworkMonitor: ObservableObject {
         monitor.start(queue: queue)
     }
     
+    // figure out what type of connection we have
     private func getConnectionType(_ path: NWPath) -> ConnectionType {
         if path.usesInterfaceType(.wifi) {
             return .wifi
@@ -68,6 +72,7 @@ class NetworkMonitor: ObservableObject {
 }
 
 // MARK: - Network Status View
+// shows network status in the UI
 struct NetworkStatusView: View {
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     
@@ -91,6 +96,7 @@ struct NetworkStatusView: View {
 }
 
 // MARK: - Network Status Badge
+// smaller network indicator for other views
 struct NetworkStatusBadge: View {
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     

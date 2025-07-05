@@ -3,6 +3,7 @@ import Speech
 import Combine
 
 // MARK: - Transcription Method Enum
+// different ways to transcribe audio - local vs cloud
 enum TranscriptionMethod: String, Codable, CaseIterable {
     case local = "local"
     case openAI = "openai"
@@ -38,12 +39,14 @@ enum TranscriptionMethod: String, Codable, CaseIterable {
 }
 
 // MARK: - Unified Transcription Result
+// result of transcription attempt - success or failure
 enum UnifiedTranscriptionResult {
     case success(String, TranscriptionMethod)
     case failure(String, TranscriptionMethod?)
 }
 
 // MARK: - Transcription Service
+// handles all transcription - local, OpenAI, fallbacks, caching
 class TranscriptionService: ObservableObject {
     static let shared = TranscriptionService()
     
@@ -59,6 +62,7 @@ class TranscriptionService: ObservableObject {
     }
     
     // MARK: - Main Transcription Method
+    // main entry point for transcription - picks the right method
     func transcribeAudio(fileURL: URL, 
                         method: TranscriptionMethod? = nil, 
                         completion: @escaping (UnifiedTranscriptionResult) -> Void) {
@@ -79,6 +83,7 @@ class TranscriptionService: ObservableObject {
     }
     
     // MARK: - Local Transcription
+    // use Apple's built-in speech recognition
     private func transcribeWithLocal(fileURL: URL, completion: @escaping (UnifiedTranscriptionResult) -> Void) {
         logger.logInfo("🍎 Starting local transcription...")
         
@@ -163,6 +168,7 @@ class TranscriptionService: ObservableObject {
     }
     
     // MARK: - OpenAI Transcription
+    // use OpenAI's Whisper API for better accuracy
     private func transcribeWithOpenAI(fileURL: URL, completion: @escaping (UnifiedTranscriptionResult) -> Void) {
         logger.logInfo("🤖 Starting OpenAI transcription...")
         
