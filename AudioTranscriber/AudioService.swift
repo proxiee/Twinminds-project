@@ -1558,7 +1558,7 @@ class AudioService: ObservableObject {
         let channelCount = Int(buffer.format.channelCount)
         let sampleRate = buffer.format.sampleRate
         let highPassCutoff: Float = 120.0 // Hz
-        let noiseGateThreshold: Float = 0.02 // Adjust as needed
+        let noiseGateThreshold: Float = 0.005 // Much more subtle noise reduction
         let alpha = exp(-2 * .pi * highPassCutoff / Float(sampleRate))
         let oneMinusAlpha = 1 - alpha
         let processedBuffer = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameCapacity)!

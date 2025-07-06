@@ -231,7 +231,7 @@ struct SegmentProgressRow: View {
             Text("\(segmentNumber)")
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundColor(.white)
+                .foregroundColor(.black)
                 .frame(width: 20)
             
             // Status icon
@@ -249,12 +249,12 @@ struct SegmentProgressRow: View {
                 if segment.transcriptionStatus == "completed" && !(segment.transcription ?? "").isEmpty {
                     Text(segment.transcription ?? "")
                         .font(.caption2)
-                        .foregroundColor(.white)
+                        .foregroundColor(.black)
                         .lineLimit(1)
                 } else {
                     Text(statusText)
                         .font(.caption2)
-                        .foregroundColor(.white)
+                        .foregroundColor(.black)
                 }
             }
             
@@ -263,7 +263,7 @@ struct SegmentProgressRow: View {
             // Duration
             Text(formatDuration(segment.duration))
                 .font(.caption2)
-                .foregroundColor(.white)
+                .foregroundColor(.black)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -300,7 +300,7 @@ struct CompactTranscriptionProgressView: View {
             HStack {
                 Text("\(completedSegments)/\(totalSegments) segments")
                     .font(.caption)
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                 
                 Spacer()
                 

@@ -354,6 +354,7 @@ struct EnhancedRecordingRowView: View {
                 
                 // Decrypt the file data
                 let decryptedData = try AudioEncryptionService.shared.decryptFile(at: file)
+                print("✅ Successfully decrypted file: \(file.lastPathComponent), size: \(decryptedData.count) bytes")
                 
                 // Create temporary file for AVAudioPlayer with correct extension
                 let originalExtension = file.pathExtension
@@ -362,6 +363,7 @@ struct EnhancedRecordingRowView: View {
                 
                 // Create and configure audio player
                 let player = try AVAudioPlayer(contentsOf: tempURL)
+                print("✅ Successfully created AVAudioPlayer for: \(tempURL.lastPathComponent), duration: \(player.duration)s")
                 
                 // Verify the player has valid duration
                 guard player.duration > 0 else {
@@ -379,6 +381,8 @@ struct EnhancedRecordingRowView: View {
                 #if os(iOS)
                 // Configure audio session for iOS
                 do {
+                    // Reset audio session first
+                    try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
                     try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
                     try AVAudioSession.sharedInstance().setActive(true)
                 } catch {
@@ -409,6 +413,11 @@ struct EnhancedRecordingRowView: View {
                         
                         // Clean up temp file
                         try? FileManager.default.removeItem(at: tempURL)
+                        
+                        // Reset audio session
+                        #if os(iOS)
+                        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+                        #endif
                     }
                 }
                 
@@ -417,6 +426,11 @@ struct EnhancedRecordingRowView: View {
                 // Reset state on error
                 isPlaying = false
                 selectedFile = nil
+                
+                // Reset audio session on error
+                #if os(iOS)
+                try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+                #endif
             }
         }
     }

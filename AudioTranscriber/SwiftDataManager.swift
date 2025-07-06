@@ -67,6 +67,12 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logSuccess("Created new recording session: \(baseFileName)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
+            
             return session
         } catch {
             logger.logError("Failed to save new session", error: error)
@@ -98,6 +104,12 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logSuccess("Added segment \(segmentIndex) to session \(session.baseFileName)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
+            
             return segment
         } catch {
             logger.logError("Failed to save segment", error: error)
@@ -114,6 +126,11 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logSuccess("Marked session as completed: \(session.baseFileName)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
         } catch {
             logger.logError("Failed to mark session as completed", error: error)
         }
@@ -129,6 +146,11 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logSuccess("Updated transcription for segment \(segment.segmentIndex)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
         } catch {
             logger.logError("Failed to update segment transcription", error: error)
         }
@@ -143,6 +165,11 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logWarning("Marked segment \(segment.segmentIndex) transcription as failed: \(error)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
         } catch {
             logger.logError("Failed to mark segment transcription as failed", error: error)
         }
@@ -262,5 +289,12 @@ class SwiftDataManager: ObservableObject {
     // MARK: - Refresh Data
     func refreshSessions() {
         sessions = fetchSessions()
+        
+        // Post notification for UI updates
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+        }
     }
-} 
+}
+
+ 
