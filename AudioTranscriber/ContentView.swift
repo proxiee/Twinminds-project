@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var showingSessions = false
     @State private var showingHelp = false
     @State private var showingAudioQuality = false
+    @State private var showingDebug = false
     
     private let logger = DebugLogger.shared
 
@@ -282,22 +283,22 @@ struct ContentView: View {
                     }
                     
                     VStack(spacing: 12) {
-                        // Main actions row
-                        HStack(spacing: 12) {
+                        // Main actions row - smaller buttons
+                        HStack(spacing: 8) {
                             Button(action: {
                                 loadRecordings()
                                 showingRecordings = true
                             }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "list.bullet")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Recordings")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.green)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Recordings List")
                             .accessibilityHint("Double tap to view all recorded audio files.")
@@ -305,16 +306,16 @@ struct ContentView: View {
                             Button(action: {
                                 showingSessions = true
                             }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "rectangle.stack")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Sessions")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.blue)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Sessions List")
                             .accessibilityHint("Double tap to view all recording sessions.")
@@ -322,16 +323,16 @@ struct ContentView: View {
                             Button(action: {
                                 showingSettings = true
                             }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "gearshape")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Settings")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.gray)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Settings")
                             .accessibilityHint("Double tap to view app settings and transcription options.")
@@ -339,34 +340,49 @@ struct ContentView: View {
                             Button(action: {
                                 showingHelp = true
                             }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "questionmark.circle")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Help")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.purple)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Help and Onboarding")
                             .accessibilityHint("Double tap to view help and tips for using the app.")
                             
                             Button(action: { showingAudioQuality = true }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "waveform")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Quality")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.orange)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Audio Quality Settings")
                             .accessibilityHint("Double tap to configure audio recording quality and format.")
+                            
+                            Button(action: { showingDebug = true }) {
+                                VStack(spacing: 2) {
+                                    Image(systemName: "ladybug")
+                                        .font(.title3)
+                                    Text("Debug")
+                                        .font(.caption2)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 60, height: 45)
+                                .background(Color.red)
+                                .cornerRadius(8)
+                            }
+                            .accessibilityLabel("Show Debug Information")
+                            .accessibilityHint("Double tap to view transcription debug information and test methods.")
                         }
                     }
                 }
@@ -410,6 +426,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingAudioQuality) {
             AudioQualitySettingsView()
+        }
+        .sheet(isPresented: $showingDebug) {
+            TranscriptionDebugView()
         }
     }
     

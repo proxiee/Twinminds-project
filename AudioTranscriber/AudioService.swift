@@ -980,6 +980,10 @@ class AudioService: ObservableObject {
             return
         }
         
+        // Cancel any existing recognition task
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest = recognitionRequest else {
             logger.logWarning("Could not create recognition request")
@@ -988,30 +992,59 @@ class AudioService: ObservableObject {
         
         recognitionRequest.shouldReportPartialResults = true
         
+        // Configure the recognition request for better performance
+        recognitionRequest.requiresOnDeviceRecognition = false // Use cloud for better accuracy
+        recognitionRequest.taskHint = .dictation // Optimize for dictation
+        
         DispatchQueue.main.async {
             self.isTranscribing = true
             self.transcribedText = ""
         }
         
+        logger.logInfo("🎤 Starting real-time speech recognition...")
+        
         recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
             DispatchQueue.main.async {
+                guard let self = self else { return }
+                
                 if let result = result {
-                    self?.transcribedText = result.bestTranscription.formattedString
+                    let newText = result.bestTranscription.formattedString
+                    if newText != self.transcribedText {
+                        self.transcribedText = newText
+                        self.logger.logInfo("📝 Live transcription: \(newText)")
+                    }
                 }
                 
                 // Handle speech recognition errors gracefully
                 if let error = error {
-                    // Only log non-critical errors and restart if needed
-                    if !error.localizedDescription.contains("Connection invalidated") {
-                        self?.logger.logWarning("Speech recognition error: \(error.localizedDescription)")
-                        // Restart for errors that might be recoverable
-                        self?.restartSpeechRecognitionIfNeeded()
+                    self.logger.logWarning("Speech recognition error: \(error.localizedDescription)")
+                    
+                    // Check if this is a recoverable error
+                    let isRecoverable = !error.localizedDescription.contains("Connection invalidated") &&
+                                       !error.localizedDescription.contains("Recognition was canceled")
+                    
+                    if isRecoverable {
+                        self.restartSpeechRecognitionIfNeeded()
+                    } else {
+                        self.logger.logWarning("Non-recoverable speech recognition error, stopping transcription")
+                        self.isTranscribing = false
                     }
                 }
                 
-                if error != nil || result?.isFinal == true {
-                    self?.isTranscribing = false
+                // Check if recognition is complete
+                if let result = result, result.isFinal {
+                    self.logger.logInfo("✅ Speech recognition completed")
+                    self.isTranscribing = false
                 }
+            }
+        }
+        
+        // Add a timeout to prevent hanging
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) { [weak self] in
+            guard let self = self else { return }
+            if self.isTranscribing && self.transcribedText.isEmpty {
+                self.logger.logWarning("Speech recognition timeout - no text detected")
+                self.restartSpeechRecognitionIfNeeded()
             }
         }
     }
@@ -1029,11 +1062,22 @@ class AudioService: ObservableObject {
     
     private func restartSpeechRecognitionIfNeeded() {
         // Only restart if we're still recording and speech recognition failed
-        guard isRecording, let audioEngine = audioEngine, audioEngine.isRunning else { return }
+        guard isRecording, let audioEngine = audioEngine, audioEngine.isRunning else { 
+            logger.logInfo("Not restarting speech recognition - not recording or audio engine not running")
+            return 
+        }
+        
+        // Cancel current recognition task
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
         
         // Wait a moment before restarting to avoid rapid reconnection attempts
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            guard let self = self, self.isRecording else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self = self, self.isRecording else { 
+                self?.logger.logInfo("Not restarting speech recognition - recording stopped")
+                return 
+            }
             
             // Get the current audio format from the engine
             let inputNode = audioEngine.inputNode
@@ -1045,14 +1089,24 @@ class AudioService: ObservableObject {
     }
     
     func transcribeAudioFile(url: URL, completion: @escaping (String?) -> Void) {
+        logger.logInfo("🎯 Starting transcription for: \(url.lastPathComponent)")
+        
+        // Check if file exists
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            logger.logError("Audio file does not exist: \(url.path)")
+            completion("[Transcription failed: File not found]")
+            return
+        }
+        
         // Use the unified transcription service
         TranscriptionService.shared.transcribeAudio(fileURL: url) { result in
             switch result {
             case .success(let transcription, let method):
-                self.logger.logInfo("✅ Transcription completed using \(method.rawValue) for: \(url.lastPathComponent)")
+                self.logger.logSuccess("✅ Transcription completed using \(method.rawValue) for: \(url.lastPathComponent)")
+                self.logger.logInfo("📝 Transcription result: \(transcription.prefix(100))...")
                 completion(transcription)
             case .failure(let error, let method):
-                self.logger.logWarning("⚠️ Transcription failed with \(method?.rawValue ?? "unknown"): \(error)")
+                self.logger.logError("❌ Transcription failed with \(method?.rawValue ?? "unknown"): \(error)")
                 completion("[Transcription failed: \(error)]")
             }
         }
