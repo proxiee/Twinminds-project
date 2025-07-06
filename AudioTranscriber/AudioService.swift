@@ -743,7 +743,7 @@ class AudioService: ObservableObject {
                                 DispatchQueue.main.async {
                                     switch fallbackResult {
                                     case .success(let transcription, let fallbackMethod):
-                                        recording.segments[index].transcription = transcription
+                                        recording.segments[index].transcription = transcription + " (fallback)"
                                         if let session = self?.currentRecordingSession,
                                            index < session.segments.count {
                                             let swiftDataSegment = session.segments[index]
@@ -789,7 +789,7 @@ class AudioService: ObservableObject {
         // When all segments are processed - NO COMBINED FILE CREATION
         dispatchGroup.notify(queue: .main) {
             self.logger.logSuccess("🎉 All segments transcribed successfully")
-            self.transcribedText = "" // Do not leak errors or combined text to main screen
+            // self.transcribedText = "" // Do NOT clear here; let it stay for user to read
         }
     }
     
@@ -1556,24 +1556,16 @@ class AudioService: ObservableObject {
         guard let floatChannelData = buffer.floatChannelData else { return buffer }
         let frameLength = Int(buffer.frameLength)
         let channelCount = Int(buffer.format.channelCount)
-        let sampleRate = buffer.format.sampleRate
-        let highPassCutoff: Float = 120.0 // Hz
-        let noiseGateThreshold: Float = 0.02 // Adjust as needed
-        let alpha = exp(-2 * .pi * highPassCutoff / Float(sampleRate))
-        let oneMinusAlpha = 1 - alpha
+        let noiseGateThreshold: Float = 0.0001 // Almost non-existent
         let processedBuffer = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameCapacity)!
         processedBuffer.frameLength = buffer.frameLength
         for channel in 0..<channelCount {
             let input = floatChannelData[channel]
             let output = processedBuffer.floatChannelData![channel]
-            var prevY: Float = 0
             for i in 0..<frameLength {
-                // High-pass filter (simple one-pole)
                 let x = input[i]
-                let y = alpha * prevY + oneMinusAlpha * x
-                prevY = y
-                // Noise gate
-                output[i] = abs(y) < noiseGateThreshold ? 0 : y
+                // Only zero out near-silence, otherwise pass through
+                output[i] = abs(x) < noiseGateThreshold ? 0 : x
             }
         }
         return processedBuffer

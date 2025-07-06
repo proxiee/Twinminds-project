@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var showingSessions = false
     @State private var showingHelp = false
     @State private var showingAudioQuality = false
+    @State private var useSegmentation: Bool = UserDefaults.standard.bool(forKey: "useSegmentedRecording")
     
     private let logger = DebugLogger.shared
 
@@ -87,6 +88,10 @@ struct ContentView: View {
                     
                     // Recording mode toggle
                     SegmentationModeToggle(audioService: audioService)
+                        .onChange(of: useSegmentation) { newValue in
+                            audioService.transcribedText = ""
+                            UserDefaults.standard.set(newValue, forKey: "useSegmentedRecording")
+                        }
                     
                     // Noise Reduction toggle (custom audio processing)
                     HStack {
@@ -232,7 +237,8 @@ struct ContentView: View {
                                         .padding()
                                         .background(Color.white.opacity(0.05))
                                         .cornerRadius(12)
-                                    } else {
+                                    }
+                                    if !audioService.transcribedText.isEmpty {
                                         Text(audioService.transcribedText)
                                             .font(.body)
                                             .foregroundColor(.white)
