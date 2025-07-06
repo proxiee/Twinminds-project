@@ -59,7 +59,7 @@ struct TranscriptionProgressView: View {
                     
                     Text("\(completedSegments)/\(totalSegments)")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                 }
                 
                 // Main progress bar
@@ -108,7 +108,7 @@ struct TranscriptionProgressView: View {
                             .frame(width: 8, height: 8)
                         Text(networkMonitor.isConnected ? "Online" : "Offline")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                     }
                     
                     Spacer()
@@ -116,7 +116,7 @@ struct TranscriptionProgressView: View {
                     if totalSegments > completedSegments + failedSegments {
                         Text(estimatedTimeRemaining)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                     }
                 }
             }
@@ -231,7 +231,7 @@ struct SegmentProgressRow: View {
             Text("\(segmentNumber)")
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white)
                 .frame(width: 20)
             
             // Status icon
@@ -249,12 +249,12 @@ struct SegmentProgressRow: View {
                 if segment.transcriptionStatus == "completed" && !(segment.transcription ?? "").isEmpty {
                     Text(segment.transcription ?? "")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                         .lineLimit(1)
                 } else {
                     Text(statusText)
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                 }
             }
             
@@ -263,7 +263,7 @@ struct SegmentProgressRow: View {
             // Duration
             Text(formatDuration(segment.duration))
                 .font(.caption2)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -300,7 +300,7 @@ struct CompactTranscriptionProgressView: View {
             HStack {
                 Text("\(completedSegments)/\(totalSegments) segments")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white)
                 
                 Spacer()
                 

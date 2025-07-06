@@ -20,20 +20,21 @@ struct ContentView: View {
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color.black,
-                    Color(red: 0.2, green: 0.2, blue: 0.25)
+                    Color(red: 0.15, green: 0.15, blue: 0.2)
                 ]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // Centered AudioTranscriber heading
-                Text("AudioTranscriber")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .padding(.top, 20)
-                    .padding(.bottom, 10)
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Centered AudioTranscriber heading
+                    Text("AudioTranscriber")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.top, 20)
+                        .padding(.bottom, 10)
                 
                 // show interruption status if something went wrong
                 if let status = audioService.interruptionStatus {
@@ -65,14 +66,14 @@ struct ContentView: View {
                             
                             Text(permissionStatusText)
                                 .font(.caption)
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
                                 .padding()
                             
                             if !audioService.microphonePermissionGranted {
                                 Text("Microphone access is also required for recording.")
                                     .font(.caption)
-                                    .foregroundColor(.white.opacity(0.8))
+                                    .foregroundColor(.white)
                                     .multilineTextAlignment(.center)
                                     .padding(.top, 4)
                             }
@@ -166,46 +167,100 @@ struct ContentView: View {
                             VStack(spacing: 8) {
                                 Text("Audio Level")
                                     .font(.caption)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundColor(.white)
                                 
                                 AudioLevelView(audioService: audioService)
                                 
                                 Text(String(format: "%.1f%%", audioService.audioLevel * 100))
                                     .font(.caption2)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundColor(.white)
                             }
                             .padding(.horizontal)
                         }
                     }
                     
-                    // Real-time transcription
-                    if audioService.isRecording || !audioService.transcribedText.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("Transcription:")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                if audioService.isTranscribing {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    // Real-time transcription - more prominent and always visible
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "text.bubble")
+                                .foregroundColor(.cyan)
+                                .font(.title3)
+                            Text("Live Transcription")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            if audioService.isTranscribing {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .cyan))
+                            }
+                            Spacer()
+                            if audioService.isRecording {
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 8, height: 8)
+                                        .scaleEffect(1.2)
+                                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: audioService.isRecording)
+                                    Text("LIVE")
+                                        .font(.caption2)
+                                        .foregroundColor(.red)
+                                        .fontWeight(.bold)
                                 }
-                                Spacer()
                             }
-                            
-                            ScrollView {
-                                Text(audioService.transcribedText.isEmpty ? "Say something..." : audioService.transcribedText)
-                                    .font(.body)
-                                    .foregroundColor(audioService.transcribedText.isEmpty ? .white.opacity(0.5) : .white)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding()
-                                    .background(Color.white.opacity(0.1))
-                                    .cornerRadius(8)
-                            }
-                            .frame(maxHeight: 150)
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, 4)
+                        
+                        // Scrollable transcription area
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    if audioService.transcribedText.isEmpty {
+                                        HStack {
+                                            Spacer()
+                                            VStack(spacing: 8) {
+                                                Image(systemName: "mic.fill")
+                                                    .font(.title2)
+                                                    .foregroundColor(.white.opacity(0.6))
+                                                Text("Start speaking to see live transcription...")
+                                                    .font(.body)
+                                                    .foregroundColor(.white)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                            Spacer()
+                                        }
+                                        .frame(minHeight: 120)
+                                        .padding()
+                                        .background(Color.white.opacity(0.05))
+                                        .cornerRadius(12)
+                                    } else {
+                                        Text(audioService.transcribedText)
+                                            .font(.body)
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding()
+                                            .background(Color.white.opacity(0.1))
+                                            .cornerRadius(12)
+                                            .id("transcriptionText")
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 200)
+                            .onChange(of: audioService.transcribedText) { _ in
+                                // Auto-scroll to bottom when new text is added
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    proxy.scrollTo("transcriptionText", anchor: .bottom)
+                                }
+                            }
+                        }
                     }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.2))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                    )
                     
                     Spacer()
                     
@@ -217,7 +272,7 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                             Text(error)
                                 .font(.caption)
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
                                 .padding()
                         }
@@ -317,6 +372,7 @@ struct ContentView: View {
                 }
             }
             .padding()
+        }
         }
         .onAppear {
             AudioTranscriberApp.registerTerminationObserver(audioService: audioService)

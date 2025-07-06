@@ -17,7 +17,7 @@ struct SegmentationProgressView: View {
                             .font(.headline)
                         Text("30-second segments")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                     }
                     
                     Spacer()
@@ -42,7 +42,7 @@ struct SegmentationProgressView: View {
                         Text(formatTime(audioService.recordingProgress))
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.white)
                     }
                     
                     // Segment progress bar
@@ -82,7 +82,7 @@ struct SegmentationProgressView: View {
                             
                             Text("\(recording.segments.count) segments")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.white)
                         }
                         
                         // Segments grid
@@ -182,7 +182,7 @@ struct SegmentIndicator: View {
             Text("\(index)")
                 .font(.caption2)
                 .fontWeight(.medium)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white)
         }
     }
     

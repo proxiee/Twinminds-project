@@ -101,7 +101,7 @@ class AudioService: ObservableObject {
     private let qualityManager = AudioQualityManager.shared
     
     @Published var noiseReductionEnabled: Bool = false
-    
+
     init() {
         logger.logInfo("🚀 AudioService initialization started")
         
@@ -400,7 +400,20 @@ class AudioService: ObservableObject {
         // Start background task for recording
         #if os(iOS)
         startBackgroundTask()
+        resetAudioSessionForRecording()
         #endif
+        resetAudioEngine()
+        
+        guard let audioEngine = audioEngine else {
+            logger.logError("AudioEngine is nil - cannot start segmented recording")
+            return
+        }
+        
+        // Stop any existing recording first
+        if audioEngine.isRunning {
+            logger.logInfo("Stopping existing recording")
+            stopSegmentedRecording()
+        }
         
         // Create new segmented recording
         let dateFormatter = DateFormatter()
@@ -416,8 +429,8 @@ class AudioService: ObservableObject {
         recordingStartTime = Date()
         recordingProgress = 0
         
-        // Start the first segment
-        startNewSegment()
+        // Start the first segment using the same method as legacy recording
+        startFirstSegment()
         
         // Start the segment timer
         startSegmentTimer()
@@ -428,6 +441,7 @@ class AudioService: ObservableObject {
             
             // Update widget with recording status
             self.updateWidgetData()
+            self.transcribedText = "" // Clear only when starting a new segmented recording
         }
     }
     
@@ -451,15 +465,14 @@ class AudioService: ObservableObject {
             swiftDataManager.markSessionCompleted(session)
         }
         
-        // Process all segments for transcription
+        // Process all segments for transcription (no combined files)
         if let recording = currentSegmentedRecording {
-            processSegmentsForTranscription(recording)
+            processSegmentsForTranscriptionOnly(recording)
         }
         
         DispatchQueue.main.async {
             self.isRecording = false
             self.currentSegmentedRecording?.isRecording = false
-            
             // Update widget with completed recording
             self.updateWidgetData()
         }
@@ -487,50 +500,51 @@ class AudioService: ObservableObject {
         }
     }
     
-    private func startNewSegment() {
-        logger.logInfo("🎬 Starting segment \(currentSegmentIndex + 1)")
+    private func startFirstSegment() {
+        logger.logInfo("🎬 Starting first segment using legacy recording method")
         
         guard let audioEngine = audioEngine else {
             logger.logError("AudioEngine is nil - cannot start segment")
             return
         }
         
-        // Reset audio session and engine for recording
-        #if os(iOS)
-        resetAudioSessionForRecording()
-        #endif
-        resetAudioEngine()
-        
-        // Stop any existing recording first
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
-        
+        logger.logInfo("Getting input node")
         let inputNode = audioEngine.inputNode
         
         // ALWAYS use the input node's native format - this is the key fix!
         let nativeFormat = inputNode.outputFormat(forBus: 0)
         logger.logInfo("📊 Using native input format: \(nativeFormat.description)")
-        
-        // Connect input to mixer using the native format
+
+        // Connect the input to the main mixer using the native format
         audioEngine.connect(inputNode, to: audioEngine.mainMixerNode, format: nativeFormat)
+
+        // Get documents directory
+        let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         
-        // Create segment file
-        guard let segmentURL = createSegmentFileURL() else {
-            logger.logError("Could not create segment file URL")
-            return
-        }
+        // Create segment filename with timestamp and segment number
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let timestamp = dateFormatter.string(from: Date())
+        // Use .caf extension for native format compatibility
+        let fileName = "AudioTranscriber_Recording_\(timestamp)_segment_\(String(format: "%03d", currentSegmentIndex + 1)).caf"
         
+        let segmentURL = documentPath.appendingPathComponent(fileName)
         currentRecordingURL = segmentURL
         
+        logger.logInfo("📁 Recording segment to: \(segmentURL.path)")
+        logger.logInfo("📂 Documents directory: \(documentPath.path)")
+        logger.logInfo("🎵 Segment file name: \(fileName)")
+        
+        // Also try to create a symbolic link or copy to the project recordings folder for easy access
+        createProjectRecordingsCopy(audioFileURL: segmentURL, fileName: fileName)
+
         do {
             // Use native format for the audio file too - this ensures compatibility
             audioFile = try AVAudioFile(forWriting: segmentURL, settings: nativeFormat.settings)
             
-            // Setup real-time transcription for this segment
+            // Setup real-time transcription
             startRealTimeTranscription(format: nativeFormat)
-            
+
             // Install tap with the native format - this is crucial!
             inputNode.installTap(onBus: 0, bufferSize: 1024, format: nativeFormat) { [weak self] (buffer, when) in
                 guard let self = self else { return }
@@ -540,7 +554,87 @@ class AudioService: ObservableObject {
                 }
                 do {
                     try self.audioFile?.write(from: processedBuffer)
+                    // Feed buffer to speech recognizer
                     self.recognitionRequest?.append(processedBuffer)
+                    // Calculate audio level for visualization
+                    self.updateAudioLevel(from: processedBuffer)
+                } catch {
+                    self.logger.logError("Error writing buffer to segment file", error: error)
+                }
+            }
+
+            audioEngine.prepare()
+            try audioEngine.start()
+
+        } catch {
+            logger.logError("Error starting segment recording", error: error)
+            stopSegmentedRecording()
+        }
+    }
+    
+    private func startNewSegment() {
+        logger.logInfo("🎬 Starting segment \(currentSegmentIndex + 1)")
+        
+        guard let audioEngine = audioEngine else {
+            logger.logError("AudioEngine is nil - cannot start segment")
+            return
+        }
+        
+        // Stop any existing recording first
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
+        logger.logInfo("Getting input node")
+        let inputNode = audioEngine.inputNode
+        
+        // ALWAYS use the input node's native format - this is the key fix!
+        let nativeFormat = inputNode.outputFormat(forBus: 0)
+        logger.logInfo("📊 Using native input format: \(nativeFormat.description)")
+
+        // Connect the input to the main mixer using the native format
+        audioEngine.connect(inputNode, to: audioEngine.mainMixerNode, format: nativeFormat)
+
+        // Get documents directory
+        let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        
+        // Create segment filename with timestamp and segment number
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let timestamp = dateFormatter.string(from: recordingStartTime!)
+        // Use .caf extension for native format compatibility
+        let fileName = "AudioTranscriber_Recording_\(timestamp)_segment_\(String(format: "%03d", currentSegmentIndex + 1)).caf"
+        
+        let segmentURL = documentPath.appendingPathComponent(fileName)
+        currentRecordingURL = segmentURL
+        
+        logger.logInfo("📁 Recording segment to: \(segmentURL.path)")
+        logger.logInfo("📂 Documents directory: \(documentPath.path)")
+        logger.logInfo("🎵 Segment file name: \(fileName)")
+        
+        // Also try to create a symbolic link or copy to the project recordings folder for easy access
+        createProjectRecordingsCopy(audioFileURL: segmentURL, fileName: fileName)
+
+        do {
+            // Use native format for the audio file too - this ensures compatibility
+            audioFile = try AVAudioFile(forWriting: segmentURL, settings: nativeFormat.settings)
+            
+            // Setup real-time transcription
+            startRealTimeTranscription(format: nativeFormat)
+
+            // Install tap with the native format - this is crucial!
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: nativeFormat) { [weak self] (buffer, when) in
+                guard let self = self else { return }
+                var processedBuffer = buffer
+                if self.noiseReductionEnabled {
+                    processedBuffer = self.applyNoiseReduction(to: buffer)
+                }
+                do {
+                    try self.audioFile?.write(from: processedBuffer)
+                    // Feed buffer to speech recognizer
+                    self.recognitionRequest?.append(processedBuffer)
+                    // Calculate audio level for visualization
                     self.updateAudioLevel(from: processedBuffer)
                 } catch {
                     self.logger.logError("Error writing buffer to segment file", error: error)
@@ -552,26 +646,32 @@ class AudioService: ObservableObject {
             
         } catch {
             logger.logError("Error starting segment recording", error: error)
-            // Stop recording if there's an error
-            DispatchQueue.main.async {
-                self.isRecording = false
-                self.currentSegmentedRecording?.isRecording = false
-            }
+            stopSegmentedRecording()
         }
     }
     
     private func stopCurrentSegment() {
+        logger.logInfo("⏹️ Stopping segment \(currentSegmentIndex + 1)...")
+        
         guard let audioEngine = audioEngine else { return }
         if audioEngine.isRunning {
+            logger.logInfo("Stopping audio engine")
             audioEngine.stop()
+            logger.logInfo("Removing tap from input node")
             audioEngine.inputNode.removeTap(onBus: 0)
         }
+        
         // Stop transcription for this segment
+        logger.logInfo("Stopping real-time transcription")
         stopRealTimeTranscription()
-        // Save the segment
+        
+        audioFile = nil
+        
+        // Save the segment using the same method as legacy recording
         if let segmentURL = currentRecordingURL {
             let startTime = Double(currentSegmentIndex) * segmentDuration
             let actualDuration = min(segmentDuration, recordingProgress - startTime)
+            
             // Save to legacy recording
             let segment = AudioSegment(
                 url: segmentURL,
@@ -579,6 +679,7 @@ class AudioService: ObservableObject {
                 duration: actualDuration
             )
             currentSegmentedRecording?.addSegment(segment)
+            
             // Save to SwiftData
             if let session = currentRecordingSession {
                 _ = swiftDataManager.addSegment(
@@ -589,28 +690,27 @@ class AudioService: ObservableObject {
                     fileURL: segmentURL
                 )
             }
-            // Encrypt the segment file
+            
+            // Encrypt the segment file - same as legacy recording
             do {
                 try AudioEncryptionService.shared.encryptFile(at: segmentURL)
                 logger.logSuccess("🔒 Segment encrypted at: \(segmentURL.lastPathComponent)")
             } catch {
                 logger.logError("Failed to encrypt segment file", error: error)
             }
-            logger.logInfo("💾 Saved segment \(currentSegmentIndex + 1): \(segmentURL.lastPathComponent)")
+            
+            // Use the exact same method as legacy recording
+            convertAndCopyRecording(cafURL: segmentURL)
+            
+            logger.logSuccess("Segment \(currentSegmentIndex + 1) stopped successfully")
         }
-        audioFile = nil
+        
         // Note: currentSegmentIndex is incremented in the timer, not here
     }
     
-    private func createSegmentFileURL() -> URL? {
-        guard let recording = currentSegmentedRecording else { return nil }
-        let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        // Use .caf extension for native format compatibility
-        let segmentFileName = "\(recording.baseFileName)_segment_\(String(format: "%03d", currentSegmentIndex + 1)).caf"
-        return documentPath.appendingPathComponent(segmentFileName)
-    }
+
     
-    private func processSegmentsForTranscription(_ recording: SegmentedRecording) {
+    private func processSegmentsForTranscriptionOnly(_ recording: SegmentedRecording) {
         logger.logInfo("🔄 Processing \(recording.segments.count) segments for transcription...")
         
         let dispatchGroup = DispatchGroup()
@@ -628,7 +728,6 @@ class AudioService: ObservableObject {
                     switch result {
                     case .success(let transcription, let method):
                         recording.segments[index].transcription = transcription
-                        
                         // Update SwiftData segment
                         if let session = self?.currentRecordingSession,
                            index < session.segments.count {
@@ -636,158 +735,65 @@ class AudioService: ObservableObject {
                             let transcriptionMethod = method
                             self?.swiftDataManager.updateSegmentTranscription(swiftDataSegment, transcription: transcription, method: transcriptionMethod)
                         }
-                        
                         self?.logger.logInfo("✅ Transcribed segment \(index + 1)/\(recording.segments.count) using \(method.rawValue)")
                     case .failure(let error, let method):
-                        recording.segments[index].transcription = "[Transcription failed: \(error)]"
-                        
-                        // Update SwiftData segment with failure
-                        if let session = self?.currentRecordingSession,
-                           index < session.segments.count {
-                            let swiftDataSegment = session.segments[index]
-                            self?.swiftDataManager.markSegmentTranscriptionFailed(swiftDataSegment, error: error)
+                        // Fallback to local if OpenAI failed and not already local
+                        if method == .openAI || method == .openAIWithFallback {
+                            TranscriptionService.shared.transcribeAudio(fileURL: segment.url, method: .local) { fallbackResult in
+                                DispatchQueue.main.async {
+                                    switch fallbackResult {
+                                    case .success(let transcription, let fallbackMethod):
+                                        recording.segments[index].transcription = transcription
+                                        if let session = self?.currentRecordingSession,
+                                           index < session.segments.count {
+                                            let swiftDataSegment = session.segments[index]
+                                            self?.swiftDataManager.updateSegmentTranscription(swiftDataSegment, transcription: transcription, method: fallbackMethod)
+                                        }
+                                        self?.logger.logInfo("✅ Local fallback succeeded for segment \(index + 1)")
+                                    case .failure(let fallbackError, _):
+                                        // Store error, but do not leak error text into transcript
+                                        recording.segments[index].transcription = ""
+                                        if let session = self?.currentRecordingSession,
+                                           index < session.segments.count {
+                                            let swiftDataSegment = session.segments[index]
+                                            self?.swiftDataManager.markSegmentTranscriptionFailed(swiftDataSegment, error: fallbackError)
+                                        }
+                                        self?.logger.logWarning("⚠️ Both OpenAI and local transcription failed for segment \(index + 1): \(fallbackError)")
+                                    }
+                                    recording.segments[index].isTranscribing = false
+                                    recording.segments[index].transcriptionCompleted = true
+                                    recording.updateCombinedTranscription()
+                                    dispatchGroup.leave()
+                                }
+                            }
+                            return // Don't call leave yet, will be called in fallback
+                        } else {
+                            // Already tried local, just mark as failed
+                            recording.segments[index].transcription = ""
+                            if let session = self?.currentRecordingSession,
+                               index < session.segments.count {
+                                let swiftDataSegment = session.segments[index]
+                                self?.swiftDataManager.markSegmentTranscriptionFailed(swiftDataSegment, error: error)
+                            }
+                            self?.logger.logWarning("⚠️ Failed to transcribe segment \(index + 1) with \(method?.rawValue ?? "unknown"): \(error)")
                         }
-                        
-                        self?.logger.logWarning("⚠️ Failed to transcribe segment \(index + 1) with \(method?.rawValue ?? "unknown"): \(error)")
                     }
-                    
                     recording.segments[index].isTranscribing = false
                     recording.segments[index].transcriptionCompleted = true
-                    
                     recording.updateCombinedTranscription()
+                    dispatchGroup.leave()
                 }
-                dispatchGroup.leave()
             }
         }
         
-        // When all segments are processed
+        // When all segments are processed - NO COMBINED FILE CREATION
         dispatchGroup.notify(queue: .main) {
             self.logger.logSuccess("🎉 All segments transcribed successfully")
-            self.transcribedText = recording.combinedTranscription
-            
-            // Create a combined audio file
-            self.createCombinedAudioFile(from: recording)
+            self.transcribedText = "" // Do not leak errors or combined text to main screen
         }
     }
     
-    private func createCombinedAudioFile(from recording: SegmentedRecording) {
-        logger.logInfo("🔗 Creating combined audio file...")
-        
-        // If only one segment, just copy it directly
-        if recording.segments.count == 1 {
-            guard let segment = recording.segments.first else { return }
-            
-            let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let combinedFileName = "\(recording.baseFileName)_combined.caf"
-            let combinedURL = documentPath.appendingPathComponent(combinedFileName)
-            
-            DispatchQueue.global(qos: .background).async {
-                do {
-                    // Remove existing file if it exists
-                    if FileManager.default.fileExists(atPath: combinedURL.path) {
-                        try FileManager.default.removeItem(at: combinedURL)
-                    }
-                    
-                    // Copy the single segment as the combined file
-                    try FileManager.default.copyItem(at: segment.url, to: combinedURL)
-                    
-                    DispatchQueue.main.async {
-                        self.logger.logSuccess("🎵 Combined audio file created: \(combinedFileName)")
-                        self.currentRecordingURL = combinedURL
-                        self.convertAndCopyRecording(cafURL: combinedURL)
-                    }
-                } catch {
-                    self.logger.logError("Error creating combined audio file", error: error)
-                }
-            }
-            return
-        }
-        
-        // Multiple segments - create composition
-        let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let combinedFileName = "\(recording.baseFileName)_combined.caf"
-        let combinedURL = documentPath.appendingPathComponent(combinedFileName)
-        
-        DispatchQueue.global(qos: .background).async {
-            do {
-                // Create composition
-                let composition = AVMutableComposition()
-                guard let audioTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
-                    self.logger.logError("Could not create audio track for combined file")
-                    return
-                }
-                
-                var currentTime = CMTime.zero
-                
-                // Add each segment to the composition
-                for segment in recording.segments.sorted(by: { $0.startTime < $1.startTime }) {
-                    let asset = AVAsset(url: segment.url)
-                    guard let assetTrack = asset.tracks(withMediaType: .audio).first else { continue }
-                    
-                    let duration = CMTime(seconds: segment.duration, preferredTimescale: 600)
-                    let timeRange = CMTimeRange(start: .zero, duration: duration)
-                    
-                    try audioTrack.insertTimeRange(timeRange, of: assetTrack, at: currentTime)
-                    currentTime = CMTimeAdd(currentTime, duration)
-                }
-                
-                // Export the combined file using compatible preset
-                guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A) else {
-                    self.logger.logError("Could not create export session for combined file")
-                    return
-                }
-                
-                // Use .m4a extension for the combined file instead of .caf
-                let m4aCombinedFileName = "\(recording.baseFileName)_combined.m4a"
-                let m4aCombinedURL = documentPath.appendingPathComponent(m4aCombinedFileName)
-                
-                exportSession.outputURL = m4aCombinedURL
-                exportSession.outputFileType = .m4a
-                
-                // Add timeout for export session
-                var hasCompleted = false
-                let exportTimeoutSeconds = 60.0 // 1 minute timeout
-                
-                let exportTimer = Timer.scheduledTimer(withTimeInterval: exportTimeoutSeconds, repeats: false) { _ in
-                    if !hasCompleted {
-                        hasCompleted = true
-                        exportSession.cancelExport()
-                        self.logger.logWarning("Combined audio file export timed out")
-                    }
-                }
-                
-                exportSession.exportAsynchronously {
-                    DispatchQueue.main.async {
-                        guard !hasCompleted else { return }
-                        hasCompleted = true
-                        exportTimer.invalidate()
-                        
-                        switch exportSession.status {
-                        case .completed:
-                            self.logger.logSuccess("🎵 Combined audio file created: \(m4aCombinedFileName)")
-                            self.currentRecordingURL = m4aCombinedURL
-                            self.convertAndCopyRecording(cafURL: m4aCombinedURL)
-                        case .failed:
-                            self.logger.logError("Failed to create combined audio file", error: exportSession.error)
-                            // Try fallback: just use the first segment as the combined file
-                            if let firstSegment = recording.segments.first {
-                                self.logger.logInfo("Using first segment as fallback combined file")
-                                self.currentRecordingURL = firstSegment.url
-                                self.convertAndCopyRecording(cafURL: firstSegment.url)
-                            }
-                        case .cancelled:
-                            self.logger.logWarning("Combined audio file creation was cancelled")
-                        default:
-                            break
-                        }
-                    }
-                }
-                
-            } catch {
-                self.logger.logError("Error creating combined audio file", error: error)
-            }
-        }
-    }
+
     
     // MARK: - Legacy Single Recording (kept for compatibility)
     
@@ -800,15 +806,16 @@ class AudioService: ObservableObject {
         // Prevent starting a new recording if already recording
         guard !isRecording else {
             logger.logWarning("Attempted to start a new recording while already recording.")
-            return
-        }
+                    return
+                }
         if UserDefaults.standard.bool(forKey: "useSegmentedRecording") {
             startSegmentedRecording()
         } else {
             startLegacyRecording()
         }
+        self.transcribedText = "" // Clear only when starting a new recording
     }
-
+    
     func stopRecording() {
         isPaused = false
         if UserDefaults.standard.bool(forKey: "useSegmentedRecording") {
@@ -817,7 +824,7 @@ class AudioService: ObservableObject {
             stopLegacyRecording()
         }
     }
-
+    
     func startLegacyRecording() {
         logger.logInfo("🎙️ Starting legacy single-file recording...")
         
@@ -969,13 +976,13 @@ class AudioService: ObservableObject {
     
     private func startRealTimeTranscription(format: AVAudioFormat) {
         guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
-            print("Speech recognizer not available")
+            logger.logWarning("Speech recognizer not available")
             return
         }
         
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest = recognitionRequest else {
-            print("Could not create recognition request")
+            logger.logWarning("Could not create recognition request")
             return
         }
         
@@ -990,6 +997,16 @@ class AudioService: ObservableObject {
             DispatchQueue.main.async {
                 if let result = result {
                     self?.transcribedText = result.bestTranscription.formattedString
+                }
+                
+                // Handle speech recognition errors gracefully
+                if let error = error {
+                    // Only log non-critical errors and restart if needed
+                    if !error.localizedDescription.contains("Connection invalidated") {
+                        self?.logger.logWarning("Speech recognition error: \(error.localizedDescription)")
+                        // Restart for errors that might be recoverable
+                        self?.restartSpeechRecognitionIfNeeded()
+                    }
                 }
                 
                 if error != nil || result?.isFinal == true {
@@ -1007,6 +1024,23 @@ class AudioService: ObservableObject {
         
         DispatchQueue.main.async {
             self.isTranscribing = false
+        }
+    }
+    
+    private func restartSpeechRecognitionIfNeeded() {
+        // Only restart if we're still recording and speech recognition failed
+        guard isRecording, let audioEngine = audioEngine, audioEngine.isRunning else { return }
+        
+        // Wait a moment before restarting to avoid rapid reconnection attempts
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self = self, self.isRecording else { return }
+            
+            // Get the current audio format from the engine
+            let inputNode = audioEngine.inputNode
+            let nativeFormat = inputNode.outputFormat(forBus: 0)
+            
+            self.logger.logInfo("🔄 Restarting speech recognition...")
+            self.startRealTimeTranscription(format: nativeFormat)
         }
     }
     
@@ -1028,7 +1062,12 @@ class AudioService: ObservableObject {
         let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         do {
             let files = try FileManager.default.contentsOfDirectory(at: documentPath, includingPropertiesForKeys: [.creationDateKey])
-            let audioFiles = files.filter { $0.pathExtension == "caf" || $0.pathExtension == "m4a" }
+            
+            // Filter audio files - include both combined and individual segment files
+            let audioFiles = files.filter { file in
+                let isAudioFile = file.pathExtension == "caf" || file.pathExtension == "m4a"
+                return isAudioFile
+            }
             
             // Sort by creation date, newest first
             return audioFiles.sorted { file1, file2 in
@@ -1191,6 +1230,36 @@ class AudioService: ObservableObject {
             self.audioLevel = min(1.0, max(0.0, normalizedPower))
         }
     }
+    
+    private func copySegmentToProjectFolder(segmentURL: URL) {
+        guard let projectPath = findProjectPath() else {
+            logger.logWarning("Could not find project path for segment copy")
+            return
+        }
+        
+        let recordingsDir = projectPath.appendingPathComponent("Recordings")
+        
+        do {
+            // Create recordings directory if it doesn't exist
+            try FileManager.default.createDirectory(at: recordingsDir, withIntermediateDirectories: true, attributes: nil)
+            
+            let copyURL = recordingsDir.appendingPathComponent(segmentURL.lastPathComponent)
+            
+            // Remove existing file if it exists
+            if FileManager.default.fileExists(atPath: copyURL.path) {
+                try FileManager.default.removeItem(at: copyURL)
+            }
+            
+            // Copy the segment file
+            try FileManager.default.copyItem(at: segmentURL, to: copyURL)
+            logger.logSuccess("📋 Segment copied to project folder: \(copyURL.lastPathComponent)")
+            
+        } catch {
+            logger.logError("Error copying segment to project folder", error: error)
+        }
+    }
+    
+
     
     private func convertAndCopyRecording(cafURL: URL) {
         guard let projectPath = findProjectPath() else {

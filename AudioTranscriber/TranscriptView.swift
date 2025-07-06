@@ -31,7 +31,7 @@ struct TranscriptView: View {
                 HStack {
                     Text("Transcript")
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.white)
                     
                     Spacer()
                     
@@ -39,7 +39,7 @@ struct TranscriptView: View {
                     if !isTranscribing && !transcription.isEmpty {
                         Text("\(transcription.count) chars")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Color.gray.opacity(0.1))
@@ -51,12 +51,12 @@ struct TranscriptView: View {
                 if isTranscribing {
                     Text("Transcribing...")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else if transcription.isEmpty {
                     Text("No transcript available")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 
@@ -66,7 +66,7 @@ struct TranscriptView: View {
                     if !transcription.isEmpty && !isTranscribing {
                         HStack {
                             Image(systemName: "magnifyingglass")
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.white)
                                 .font(.caption)
                             
                             TextField("Search transcript", text: $searchText)
@@ -118,7 +118,7 @@ struct TranscriptView: View {
                         } label: {
                             Image(systemName: "ellipsis.circle")
                                 .font(.title3)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.white)
                         }
                         .buttonStyle(PlainButtonStyle())
                         .accessibilityLabel("Transcript Actions")
@@ -162,11 +162,11 @@ struct TranscriptView: View {
                     
                     Text("Transcribing audio...")
                         .font(.body)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                     
                     Text("This may take a few moments")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
@@ -178,11 +178,11 @@ struct TranscriptView: View {
                     
                     Text("No transcript yet")
                         .font(.title3)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.white)
                     
                     Text("Tap 'Transcribe' to generate a transcript for this recording")
                         .font(.body)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }

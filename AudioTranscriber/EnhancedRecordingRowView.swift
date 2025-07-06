@@ -28,6 +28,7 @@ struct EnhancedRecordingRowView: View {
     @State private var cachedTranscript: String = ""
     @State private var hasTranscript: Bool = false
     @State private var isHovered: Bool = false
+    @State private var tempFileURL: URL?
     @StateObject private var transcriptManager = TranscriptManager.shared
     
     private var isSelected: Bool {
@@ -256,19 +257,42 @@ struct EnhancedRecordingRowView: View {
             // Decrypt the file data
             let decryptedData = try AudioEncryptionService.shared.decryptFile(at: file)
             
-            // Create temporary file for AVAudioPlayer
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+            // Create temporary file for AVAudioPlayer with correct extension
+            let originalExtension = file.pathExtension
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "." + originalExtension)
             try decryptedData.write(to: tempURL)
             
+            // Try AVAudioPlayer first
             let audioPlayer = try AVAudioPlayer(contentsOf: tempURL)
             let duration = audioPlayer.duration
-            fileDuration = formatDuration(duration)
             
             // Clean up temp file
             try? FileManager.default.removeItem(at: tempURL)
+            
+            // Only set duration if it's valid
+            if duration > 0 {
+                fileDuration = formatDuration(duration)
+                return
+            }
         } catch {
-            fileDuration = "Unknown"
+            print("AVAudioPlayer failed for duration: \(error)")
         }
+        
+        // Fallback: try AVAsset for duration (synchronous approach)
+        do {
+            let asset = AVURLAsset(url: file)
+            let duration = asset.duration
+            let durationSeconds = CMTimeGetSeconds(duration)
+            if durationSeconds > 0 {
+                fileDuration = formatDuration(durationSeconds)
+                return
+            }
+        } catch {
+            print("AVAsset failed for duration: \(error)")
+        }
+        
+        // If all else fails, show unknown
+        fileDuration = "Unknown"
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -331,12 +355,26 @@ struct EnhancedRecordingRowView: View {
                 // Decrypt the file data
                 let decryptedData = try AudioEncryptionService.shared.decryptFile(at: file)
                 
-                // Create temporary file for AVAudioPlayer
-                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+                // Create temporary file for AVAudioPlayer with correct extension
+                let originalExtension = file.pathExtension
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "." + originalExtension)
                 try decryptedData.write(to: tempURL)
                 
                 // Create and configure audio player
                 let player = try AVAudioPlayer(contentsOf: tempURL)
+                
+                // Verify the player has valid duration
+                guard player.duration > 0 else {
+                    // Try AVAsset as fallback for duration
+                    let asset = AVURLAsset(url: tempURL)
+                    let duration = asset.duration
+                    let durationSeconds = CMTimeGetSeconds(duration)
+                    guard durationSeconds > 0 else {
+                        throw NSError(domain: "AudioPlayer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid audio duration"])
+                    }
+                    // If we get here, AVAsset duration is valid, so continue
+                    return
+                }
                 
                 #if os(iOS)
                 // Configure audio session for iOS
@@ -355,6 +393,9 @@ struct EnhancedRecordingRowView: View {
                 isPlaying = true
                 duration = audioPlayer?.duration ?? 0
                 currentTime = 0
+                
+                // Store temp URL for cleanup when playback stops
+                tempFileURL = tempURL
                 
                 // Start timer to update progress
                 playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in

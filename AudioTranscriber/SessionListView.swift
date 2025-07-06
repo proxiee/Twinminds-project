@@ -68,7 +68,7 @@ struct SessionListView: View {
                     VStack(spacing: 20) {
                         Image(systemName: "waveform.path")
                             .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.white)
                         
                         Text("No Recording Sessions")
                             .font(.title2)
@@ -76,7 +76,7 @@ struct SessionListView: View {
                         
                         Text("Start recording to see your sessions here")
                             .font(.body)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                             .multilineTextAlignment(.center)
                     }
                     .padding()
@@ -189,11 +189,11 @@ struct SessionRowView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(session.baseFileName)
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white)
                         
                         Text(formatDate(session.startDate))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                     }
                     
                     Spacer()
@@ -201,11 +201,11 @@ struct SessionRowView: View {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("\(session.segmentCount) segments")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                         
                         Text(formatDuration(session.totalDuration))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                     }
                 }
                 
@@ -229,7 +229,7 @@ struct SessionRowView: View {
                 if !session.combinedTranscription.isEmpty {
                     Text(session.combinedTranscription)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                         .lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -303,7 +303,7 @@ struct SessionDetailView: View {
                         InfoRow(title: "Status", value: RecordingStatus(rawValue: session.recordingStatus)?.displayName ?? "Unknown")
                     }
                     .padding()
-                    .background(Color.gray.opacity(0.1))
+                    .background(Color.white.opacity(0.1))
                     .cornerRadius(12)
                     
                     // Enhanced transcription progress
@@ -330,7 +330,7 @@ struct SessionDetailView: View {
                             Text(session.combinedTranscription)
                                 .font(.body)
                                 .padding()
-                                .background(Color.gray.opacity(0.1))
+                                .background(Color.white.opacity(0.1))
                                 .cornerRadius(12)
                         }
                     }
@@ -372,13 +372,13 @@ struct InfoRow: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white)
             
             Spacer()
             
             Text(value)
                 .font(.subheadline)
-                .foregroundColor(.primary)
+                .foregroundColor(.white)
         }
     }
 }
@@ -403,7 +403,7 @@ struct SegmentDetailView: View {
             HStack {
                 Text("Duration: \(formatDuration(segment.duration))")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white)
                 
                 Spacer()
                 
@@ -411,7 +411,7 @@ struct SegmentDetailView: View {
                    let method = TranscriptionMethod(rawValue: methodString) {
                     Text("Method: \(method.displayName)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                 }
             }
             
@@ -419,7 +419,7 @@ struct SegmentDetailView: View {
                 Text(transcription)
                     .font(.body)
                     .padding()
-                    .background(Color.gray.opacity(0.1))
+                    .background(Color.white.opacity(0.1))
                     .cornerRadius(8)
             }
             
@@ -433,7 +433,7 @@ struct SegmentDetailView: View {
             }
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
+        .background(Color.white.opacity(0.05))
         .cornerRadius(12)
     }
     
@@ -473,7 +473,7 @@ struct SearchBar: View {
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.gray)
+                .foregroundColor(.white)
             
             TextField(placeholder, text: $text)
                 .textFieldStyle(PlainTextFieldStyle())
@@ -483,7 +483,7 @@ struct SearchBar: View {
                     text = ""
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                 }
             }
         }
