@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 
+// audio player with controls - play, pause, seek, skip
 struct AudioPlayerView: View {
     @Binding var isPlaying: Bool
     @Binding var currentTime: Double
@@ -10,6 +11,7 @@ struct AudioPlayerView: View {
     
     @State private var isDragging = false
     @State private var dragValue: Double = 0
+    @State private var progressTimer: Timer?
     
     var body: some View {
         VStack(spacing: 16) {
@@ -112,56 +114,38 @@ struct AudioPlayerView: View {
                         .monospacedDigit()
                 }
             }
-            
-            // Additional controls
-            HStack(spacing: 24) {
-                // Speed control
-                Menu {
-                    Button("0.5x") { setPlaybackRate(0.5) }
-                    Button("0.75x") { setPlaybackRate(0.75) }
-                    Button("1.0x") { setPlaybackRate(1.0) }
-                    Button("1.25x") { setPlaybackRate(1.25) }
-                    Button("1.5x") { setPlaybackRate(1.5) }
-                    Button("2.0x") { setPlaybackRate(2.0) }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "speedometer")
-                        Text("\(String(format: "%.1f", audioPlayer?.rate ?? 1.0))x")
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                }
-                .buttonStyle(PlainButtonStyle())
-                
-                Spacer()
-                
-                // Volume control (placeholder)
-                HStack(spacing: 8) {
-                    Image(systemName: "speaker.wave.2")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Slider(value: .constant(0.8), in: 0...1)
-                        .frame(width: 80)
-                        .disabled(true) // Audio level control can be added later
-                }
-            }
         }
         .padding(.vertical, 8)
+        .onAppear {
+            startProgressTimer()
+        }
+        .onDisappear {
+            stopProgressTimer()
+        }
+        .onChange(of: isPlaying) { _ in
+            if isPlaying {
+                startProgressTimer()
+            } else {
+                stopProgressTimer()
+            }
+        }
     }
     
+    // calculate progress bar width
     private func progressWidth(_ totalWidth: CGFloat) -> CGFloat {
         guard duration > 0 else { return 0 }
         let progress = (isDragging ? dragValue : currentTime) / duration
         return max(0, min(totalWidth, totalWidth * progress))
     }
     
+    // format time as mm:ss
     private func formatTime(_ time: Double) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
     
+    // toggle play/pause
     private func togglePlayback() {
         if isPlaying {
             audioPlayer?.pause()
@@ -172,8 +156,20 @@ struct AudioPlayerView: View {
         }
     }
     
-    private func setPlaybackRate(_ rate: Float) {
-        audioPlayer?.rate = rate
+    // start timer to update progress
+    private func startProgressTimer() {
+        stopProgressTimer()
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            if let player = audioPlayer, isPlaying {
+                currentTime = player.currentTime
+            }
+        }
+    }
+    
+    // stop the progress timer
+    private func stopProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = nil
     }
 }
 
@@ -186,5 +182,5 @@ struct AudioPlayerView: View {
         onSeek: { _ in }
     )
     .padding()
-                .background(Color(.systemBackground))
+    .background(Color(.systemBackground))
 }

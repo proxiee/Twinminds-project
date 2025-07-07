@@ -6,6 +6,7 @@ struct TranscriptionSettingsView: View {
     @State private var tempAPIKey = ""
     @State private var statusMessage = ""
     @State private var statusIsError = false
+    @EnvironmentObject var audioService: AudioService
     
     private let logger = DebugLogger.shared
     
@@ -24,7 +25,15 @@ struct TranscriptionSettingsView: View {
                     
                     Text("Choose how audio should be transcribed")
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
+                    
+                    // Network status for transcription services
+                    HStack {
+                        NetworkStatusBadge()
+                        Text("• Transcription services require internet connection")
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                    }
                 }
                 .padding(.top)
                 
@@ -65,7 +74,7 @@ struct TranscriptionSettingsView: View {
                          "API key is configured and ready to use" : 
                          "API key is required for OpenAI Whisper transcription")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                     
                     HStack {
                         Button(action: {
@@ -127,7 +136,7 @@ struct TranscriptionSettingsView: View {
                         
                         Text("Record audio in the main app to test transcription")
                             .font(.caption2)
-                            .foregroundColor(.gray)
+                            .foregroundColor(.white)
                     }
                     .padding()
                     .background(Color.green.opacity(0.1))
@@ -271,7 +280,7 @@ struct TranscriptionMethodRow: View {
                     
                     Text(method.description)
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                         .multilineTextAlignment(.leading)
                     
                     if !isAvailable, let reason = unavailableReason {
@@ -312,7 +321,7 @@ struct APIKeyInputView: View {
                     
                     Text("Enter your OpenAI API key to enable Whisper transcription")
                         .font(.body)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                 }
                 .padding(.top)
@@ -327,7 +336,7 @@ struct APIKeyInputView: View {
                     
                     Text("Your API key is stored securely in the system Keychain")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                 }
                 
                 VStack(alignment: .leading, spacing: 8) {
@@ -337,7 +346,7 @@ struct APIKeyInputView: View {
                     
                     Text("1. Visit platform.openai.com\n2. Sign in to your account\n3. Go to API Keys section\n4. Create a new secret key\n5. Copy and paste it here")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                 }
                 .padding()
                 .background(Color.gray.opacity(0.1))

@@ -90,9 +90,7 @@ struct RecordingsListView: View {
                                             duration: $duration,
                                             playbackTimer: $playbackTimer,
                                             recordedFiles: $recordedFiles,
-                                            onFileSelected: { selectedFile in
-                                                loadTranscriptForFile(selectedFile)
-                                            }
+                                            onFileSelected: { selectFile($0) }
                                         )
                                     }
                                 }
@@ -254,9 +252,7 @@ struct RecordingsListView: View {
                                     duration: $duration,
                                     playbackTimer: $playbackTimer,
                                     recordedFiles: $recordedFiles,
-                                    onFileSelected: { selectedFile in
-                                        loadTranscriptForFile(selectedFile)
-                                    }
+                                    onFileSelected: { selectFile($0) }
                                 )
                             }
                         }
@@ -375,6 +371,7 @@ struct RecordingsListView: View {
                     self.transcriptStatus[file] = .available
                     self.selectedFileTranscription = transcription
                     self.saveTranscriptToDisk(file: file, transcript: transcription)
+                    TranscriptManager.shared.saveTranscript(transcription, for: file)
                 } else {
                     self.transcriptStatus[file] = .failed
                     self.selectedFileTranscription = "Transcription failed. Please try again."
@@ -385,7 +382,7 @@ struct RecordingsListView: View {
     
     private func loadTranscriptForFile(_ file: URL) {
         // Check if we have a cached transcript using TranscriptManager
-        if let cachedTranscript = transcriptManager.getTranscript(for: file) {
+        if let cachedTranscript = TranscriptManager.shared.getTranscript(for: file) {
             selectedFileTranscription = cachedTranscript
             transcriptStatus[file] = .available
             return
@@ -436,6 +433,15 @@ struct RecordingsListView: View {
             stopPlayback()
         }
     }
+    
+    // Clear transcription when a new file is selected
+    private func selectFile(_ file: URL?) {
+        selectedFile = file
+        selectedFileTranscription = "" // Always clear before loading
+        if let file = file {
+            loadTranscriptForFile(file)
+        }
+    }
 }
 
 struct RecordingRowView: View {
@@ -458,7 +464,7 @@ struct RecordingRowView: View {
                         .font(.headline)
                     Text(formatDate(file))
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                 }
                 
                 Spacer()
@@ -498,7 +504,7 @@ struct RecordingRowView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Transcription:")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.white)
                     
                     Text(selectedFileTranscription)
                         .font(.body)

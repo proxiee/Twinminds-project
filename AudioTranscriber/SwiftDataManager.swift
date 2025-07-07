@@ -1,6 +1,7 @@
 import SwiftData
 import Foundation
 
+// manages all the database stuff - sessions, segments, transcriptions
 @MainActor
 class SwiftDataManager: ObservableObject {
     static let shared = SwiftDataManager()
@@ -21,6 +22,7 @@ class SwiftDataManager: ObservableObject {
     }
     
     // MARK: - Setup
+    // set up the database with our models
     private func setupModelContainer() {
         do {
             let schema = Schema([
@@ -52,6 +54,7 @@ class SwiftDataManager: ObservableObject {
     }
     
     // MARK: - Session Management
+    // create a new recording session
     func createSession(baseFileName: String) -> RecordingSession? {
         guard let context = modelContext else {
             logger.logError("Model context not available")
@@ -64,6 +67,12 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logSuccess("Created new recording session: \(baseFileName)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
+            
             return session
         } catch {
             logger.logError("Failed to save new session", error: error)
@@ -71,6 +80,7 @@ class SwiftDataManager: ObservableObject {
         }
     }
     
+    // add a segment to an existing session
     func addSegment(to session: RecordingSession, segmentIndex: Int, startTime: TimeInterval, duration: TimeInterval, fileURL: URL) -> TranscriptionSegment? {
         guard let context = modelContext else {
             logger.logError("Model context not available")
@@ -94,6 +104,12 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logSuccess("Added segment \(segmentIndex) to session \(session.baseFileName)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
+            
             return segment
         } catch {
             logger.logError("Failed to save segment", error: error)
@@ -101,6 +117,7 @@ class SwiftDataManager: ObservableObject {
         }
     }
     
+    // mark a session as done
     func markSessionCompleted(_ session: RecordingSession) {
         guard let context = modelContext else { return }
         
@@ -109,11 +126,17 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logSuccess("Marked session as completed: \(session.baseFileName)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
         } catch {
             logger.logError("Failed to mark session as completed", error: error)
         }
     }
     
+    // update transcription for a segment
     func updateSegmentTranscription(_ segment: TranscriptionSegment, transcription: String, method: TranscriptionMethod) {
         guard let context = modelContext else { return }
         
@@ -123,11 +146,17 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logSuccess("Updated transcription for segment \(segment.segmentIndex)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
         } catch {
             logger.logError("Failed to update segment transcription", error: error)
         }
     }
     
+    // mark transcription as failed
     func markSegmentTranscriptionFailed(_ segment: TranscriptionSegment, error: String) {
         guard let context = modelContext else { return }
         
@@ -136,12 +165,18 @@ class SwiftDataManager: ObservableObject {
         do {
             try context.save()
             logger.logWarning("Marked segment \(segment.segmentIndex) transcription as failed: \(error)")
+            
+            // Post notification for UI updates
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+            }
         } catch {
             logger.logError("Failed to mark segment transcription as failed", error: error)
         }
     }
     
     // MARK: - Query Methods
+    // get all sessions
     func fetchSessions(limit: Int = 100) -> [RecordingSession] {
         guard let context = modelContext else { return [] }
         
@@ -160,6 +195,7 @@ class SwiftDataManager: ObservableObject {
         }
     }
     
+    // get recent sessions for the widget
     func fetchRecentSessions(limit: Int = 10) -> [RecordingSession] {
         guard let context = modelContext else { return [] }
         
@@ -177,6 +213,7 @@ class SwiftDataManager: ObservableObject {
         }
     }
     
+    // get a specific session by ID
     func fetchSession(by id: UUID) -> RecordingSession? {
         guard let context = modelContext else { return nil }
         
@@ -195,6 +232,7 @@ class SwiftDataManager: ObservableObject {
         }
     }
     
+    // get segments that still need transcription
     func fetchPendingTranscriptions() -> [TranscriptionSegment] {
         guard let context = modelContext else { return [] }
         
@@ -251,5 +289,12 @@ class SwiftDataManager: ObservableObject {
     // MARK: - Refresh Data
     func refreshSessions() {
         sessions = fetchSessions()
+        
+        // Post notification for UI updates
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .sessionUpdated, object: nil)
+        }
     }
-} 
+}
+
+ 

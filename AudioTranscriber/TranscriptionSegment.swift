@@ -1,6 +1,7 @@
 import SwiftData
 import Foundation
 
+// individual 30-second audio segment with its transcription
 @Model
 final class TranscriptionSegment {
     // MARK: - Properties
@@ -22,10 +23,12 @@ final class TranscriptionSegment {
     var session: RecordingSession?
     
     // MARK: - Computed Properties
+    // when this segment ends
     var endTime: TimeInterval {
         return startTime + duration
     }
     
+    // just the filename for display
     var fileName: String {
         return fileURL.lastPathComponent
     }
@@ -49,6 +52,7 @@ final class TranscriptionSegment {
     }
     
     // MARK: - Methods
+    // mark transcription as successful
     func markTranscriptionCompleted(_ transcription: String, method: TranscriptionMethod) {
         self.transcription = transcription
         self.transcriptionMethod = method.rawValue
@@ -57,6 +61,7 @@ final class TranscriptionSegment {
         self.updatedAt = Date()
     }
     
+    // mark transcription as failed
     func markTranscriptionFailed(_ error: String) {
         self.transcriptionStatus = TranscriptionStatus.failed.rawValue
         self.processingStatus = ProcessingStatus.failed.rawValue
@@ -65,6 +70,7 @@ final class TranscriptionSegment {
         self.updatedAt = Date()
     }
     
+    // reset for retry attempt
     func resetForRetry() {
         self.processingStatus = ProcessingStatus.pending.rawValue
         self.transcriptionStatus = TranscriptionStatus.notStarted.rawValue
@@ -73,6 +79,7 @@ final class TranscriptionSegment {
 }
 
 // MARK: - Supporting Enums
+// different states processing can be in
 enum ProcessingStatus: String, Codable, CaseIterable {
     case pending = "pending"
     case processing = "processing"

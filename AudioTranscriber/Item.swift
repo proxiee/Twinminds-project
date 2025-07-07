@@ -8,6 +8,7 @@
 import Foundation
 
 // Simple data model for now - will be enhanced with proper SwiftData when targeting iOS 17+
+// this is just a placeholder - not really used anymore
 struct Item: Identifiable, Codable {
     let id = UUID()
     var timestamp: Date

@@ -2,6 +2,7 @@
 import UIKit
 import SwiftUI
 
+// helper for sharing files and text
 public struct ShareSheetItem: Identifiable {
     public let id = UUID()
     public let items: [Any]
@@ -10,6 +11,7 @@ public struct ShareSheetItem: Identifiable {
     }
 }
 
+// wrapper for iOS share sheet
 public struct ActivityViewController: UIViewControllerRepresentable {
     public let activityItems: [Any]
     public init(activityItems: [Any]) {

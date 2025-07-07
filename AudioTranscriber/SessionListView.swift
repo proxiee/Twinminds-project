@@ -8,6 +8,10 @@ struct SessionListView: View {
     @State private var searchText = ""
     @State private var sortOption: SortOption = .dateDescending
     @State private var filterOption: FilterOption = .all
+    // Pagination state
+    @State private var pageSize: Int = 20
+    @State private var currentPage: Int = 1
+    @State private var isLoadingMore: Bool = false
     
     enum SortOption: String, CaseIterable, Identifiable {
         case dateDescending = "Newest"
@@ -28,11 +32,8 @@ struct SessionListView: View {
         NavigationView {
             VStack {
                 HStack {
-                    TextField("Search sessions", text: $searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding(.horizontal)
-                        .accessibilityLabel("Search Sessions")
-                        .accessibilityHint("Enter text to search sessions by name, date, or transcript.")
+                    SearchBar(text: $searchText, placeholder: "Search sessions...")
+                    
                     Menu {
                         Picker("Sort by", selection: $sortOption) {
                             ForEach(SortOption.allCases) { option in
@@ -55,49 +56,72 @@ struct SessionListView: View {
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                             .font(.title2)
+                            .foregroundColor(.white)
                     }
+                    
+                    Spacer()
+                    
+                    // Network status for transcription
+                    NetworkStatusBadge()
                 }
                 .padding(.horizontal)
+                
                 if dataManager.sessions.isEmpty {
                     VStack(spacing: 20) {
                         Image(systemName: "waveform.path")
                             .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.white)
                         
                         Text("No Recording Sessions")
                             .font(.title2)
                             .fontWeight(.medium)
+                            .foregroundColor(.white)
                         
                         Text("Start recording to see your sessions here")
                             .font(.body)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.7))
                             .multilineTextAlignment(.center)
                     }
                     .padding()
                 } else {
                     List {
-                        ForEach(filteredSessions) { session in
+                        ForEach(pagedSessions) { session in
                             SessionRowView(session: session) {
                                 selectedSession = session
                                 showingSessionDetail = true
                             }
                             .accessibilityLabel("Session: \(session.baseFileName)")
                             .accessibilityHint("Double tap to view session details.")
+                            .onAppear {
+                                // If this is the last item, load more
+                                if session == pagedSessions.last && !isLoadingMore && pagedSessions.count < filteredSessions.count {
+                                    loadMoreSessions()
+                                }
+                            }
                         }
                         .onDelete(perform: deleteSessions)
+                        if isLoadingMore {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                Spacer()
+                            }
+                        }
+                    }
+                    .refreshable {
+                        currentPage = 1
+                        dataManager.refreshSessions()
                     }
                 }
             }
             .navigationTitle("Recording Sessions")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Refresh") {
-                        dataManager.refreshSessions()
-                    }
-                }
-            }
             .onAppear {
+                dataManager.refreshSessions()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .sessionUpdated)) { _ in
+                // Refresh when sessions are updated
                 dataManager.refreshSessions()
             }
             .sheet(isPresented: $showingSessionDetail) {
@@ -146,6 +170,20 @@ struct SessionListView: View {
         }
         dataManager.refreshSessions()
     }
+    
+    // Pagination logic
+    private var pagedSessions: [RecordingSession] {
+        let end = min(currentPage * pageSize, filteredSessions.count)
+        return Array(filteredSessions.prefix(end))
+    }
+    private func loadMoreSessions() {
+        guard !isLoadingMore else { return }
+        isLoadingMore = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            currentPage += 1
+            isLoadingMore = false
+        }
+    }
 }
 
 struct SessionRowView: View {
@@ -159,11 +197,11 @@ struct SessionRowView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(session.baseFileName)
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.black)
                         
                         Text(formatDate(session.startDate))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.black.opacity(0.7))
                     }
                     
                     Spacer()
@@ -171,11 +209,11 @@ struct SessionRowView: View {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("\(session.segmentCount) segments")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.black.opacity(0.7))
                         
                         Text(formatDuration(session.totalDuration))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.black.opacity(0.7))
                     }
                 }
                 
@@ -192,11 +230,14 @@ struct SessionRowView: View {
                     )
                 }
                 
+                // Compact transcription progress
+                CompactTranscriptionProgressView(session: session)
+                
                 // Preview of combined transcription
                 if !session.combinedTranscription.isEmpty {
                     Text(session.combinedTranscription)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.black.opacity(0.8))
                         .lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -259,6 +300,7 @@ struct SessionDetailView: View {
                         Text("Session Details")
                             .font(.title2)
                             .fontWeight(.bold)
+                            .foregroundColor(.white)
                         
                         InfoRow(title: "File Name", value: session.baseFileName)
                         InfoRow(title: "Start Date", value: formatDate(session.startDate))
@@ -270,14 +312,18 @@ struct SessionDetailView: View {
                         InfoRow(title: "Status", value: RecordingStatus(rawValue: session.recordingStatus)?.displayName ?? "Unknown")
                     }
                     .padding()
-                    .background(Color.gray.opacity(0.1))
+                    .background(Color.white.opacity(0.1))
                     .cornerRadius(12)
+                    
+                    // Enhanced transcription progress
+                    TranscriptionProgressView(session: session)
                     
                     // Segments
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Segments")
                             .font(.title2)
                             .fontWeight(.bold)
+                            .foregroundColor(.white)
                         
                         ForEach(session.segments.sorted(by: { $0.segmentIndex < $1.segmentIndex })) { segment in
                             SegmentDetailView(segment: segment)
@@ -290,11 +336,13 @@ struct SessionDetailView: View {
                             Text("Combined Transcription")
                                 .font(.title2)
                                 .fontWeight(.bold)
+                                .foregroundColor(.white)
                             
                             Text(session.combinedTranscription)
                                 .font(.body)
+                                .foregroundColor(.white)
                                 .padding()
-                                .background(Color.gray.opacity(0.1))
+                                .background(Color.white.opacity(0.1))
                                 .cornerRadius(12)
                         }
                     }
@@ -308,6 +356,7 @@ struct SessionDetailView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(.white)
                 }
             }
         }
@@ -336,13 +385,13 @@ struct InfoRow: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.8))
             
             Spacer()
             
             Text(value)
                 .font(.subheadline)
-                .foregroundColor(.primary)
+                .foregroundColor(.white)
         }
     }
 }
@@ -355,6 +404,7 @@ struct SegmentDetailView: View {
             HStack {
                 Text("Segment \(segment.segmentIndex + 1)")
                     .font(.headline)
+                    .foregroundColor(.white)
                 
                 Spacer()
                 
@@ -367,7 +417,7 @@ struct SegmentDetailView: View {
             HStack {
                 Text("Duration: \(formatDuration(segment.duration))")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.7))
                 
                 Spacer()
                 
@@ -375,15 +425,16 @@ struct SegmentDetailView: View {
                    let method = TranscriptionMethod(rawValue: methodString) {
                     Text("Method: \(method.displayName)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.7))
                 }
             }
             
             if let transcription = segment.transcription {
                 Text(transcription)
                     .font(.body)
+                    .foregroundColor(.white)
                     .padding()
-                    .background(Color.gray.opacity(0.1))
+                    .background(Color.white.opacity(0.1))
                     .cornerRadius(8)
             }
             
@@ -397,7 +448,7 @@ struct SegmentDetailView: View {
             }
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
+        .background(Color.white.opacity(0.05))
         .cornerRadius(12)
     }
     
@@ -427,6 +478,41 @@ extension RecordingSession {
     var isFullyTranscribed: Bool {
         !segments.isEmpty && segments.allSatisfy { $0.transcriptionStatus == "completed" }
     }
+}
+
+// MARK: - SearchBar Component
+struct SearchBar: View {
+    @Binding var text: String
+    let placeholder: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.black)
+            
+            TextField(placeholder, text: $text)
+                .textFieldStyle(PlainTextFieldStyle())
+                .foregroundColor(.black)
+            
+            if !text.isEmpty {
+                Button(action: {
+                    text = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.black)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(10)
+    }
+}
+
+// MARK: - Notification Extension
+extension Notification.Name {
+    static let sessionUpdated = Notification.Name("sessionUpdated")
 }
 
 #Preview {

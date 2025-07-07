@@ -3,6 +3,7 @@ import Speech
 import Combine
 
 // MARK: - Transcription Method Enum
+// different ways to transcribe audio - local vs cloud
 enum TranscriptionMethod: String, Codable, CaseIterable {
     case local = "local"
     case openAI = "openai"
@@ -38,12 +39,14 @@ enum TranscriptionMethod: String, Codable, CaseIterable {
 }
 
 // MARK: - Unified Transcription Result
+// result of transcription attempt - success or failure
 enum UnifiedTranscriptionResult {
     case success(String, TranscriptionMethod)
     case failure(String, TranscriptionMethod?)
 }
 
 // MARK: - Transcription Service
+// handles all transcription - local, OpenAI, fallbacks, caching
 class TranscriptionService: ObservableObject {
     static let shared = TranscriptionService()
     
@@ -59,6 +62,7 @@ class TranscriptionService: ObservableObject {
     }
     
     // MARK: - Main Transcription Method
+    // main entry point for transcription - picks the right method
     func transcribeAudio(fileURL: URL, 
                         method: TranscriptionMethod? = nil, 
                         completion: @escaping (UnifiedTranscriptionResult) -> Void) {
@@ -79,6 +83,7 @@ class TranscriptionService: ObservableObject {
     }
     
     // MARK: - Local Transcription
+    // use Apple's built-in speech recognition
     private func transcribeWithLocal(fileURL: URL, completion: @escaping (UnifiedTranscriptionResult) -> Void) {
         logger.logInfo("🍎 Starting local transcription...")
         
@@ -101,51 +106,69 @@ class TranscriptionService: ObservableObject {
             return
         }
         
-        let request = SFSpeechURLRecognitionRequest(url: fileURL)
-        request.shouldReportPartialResults = false
-        
-        // Add timeout to prevent hanging
-        var hasCompleted = false
-        let timeoutSeconds = 30.0
-        
-        let timeoutTimer = Timer.scheduledTimer(withTimeInterval: timeoutSeconds, repeats: false) { _ in
-            if !hasCompleted {
-                hasCompleted = true
-                completion(.failure("Local transcription timed out after \(Int(timeoutSeconds)) seconds", .local))
-            }
-        }
-        
-        speechRecognizer.recognitionTask(with: request) { result, error in
-            DispatchQueue.main.async {
-                guard !hasCompleted else { return }
-                hasCompleted = true
-                timeoutTimer.invalidate()
-                
-                if let error = error {
-                    self.logger.logError("Local transcription error: \(error.localizedDescription)")
-                    completion(.failure("Local transcription failed: \(error.localizedDescription)", .local))
-                    return
+        // Decrypt the file data first
+        do {
+            let decryptedData = try AudioEncryptionService.shared.decryptFile(at: fileURL)
+            
+            // Create temporary file for speech recognition
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+            try decryptedData.write(to: tempURL)
+            
+            let request = SFSpeechURLRecognitionRequest(url: tempURL)
+            request.shouldReportPartialResults = false
+            
+            // Add timeout to prevent hanging
+            var hasCompleted = false
+            let timeoutSeconds = 30.0
+            
+            let timeoutTimer = Timer.scheduledTimer(withTimeInterval: timeoutSeconds, repeats: false) { _ in
+                if !hasCompleted {
+                    hasCompleted = true
+                    // Clean up temp file
+                    try? FileManager.default.removeItem(at: tempURL)
+                    completion(.failure("Local transcription timed out after \(Int(timeoutSeconds)) seconds", .local))
                 }
-                
-                if let result = result {
-                    let transcription = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            
+            speechRecognizer.recognitionTask(with: request) { result, error in
+                DispatchQueue.main.async {
+                    guard !hasCompleted else { return }
+                    hasCompleted = true
+                    timeoutTimer.invalidate()
                     
-                    if transcription.isEmpty {
-                        completion(.success("[No speech detected]", .local))
-                    } else {
-                        // Cache the successful transcription
-                        TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
-                        self.logger.logSuccess("✅ Local transcription completed")
-                        completion(.success(transcription, .local))
+                    // Clean up temp file
+                    try? FileManager.default.removeItem(at: tempURL)
+                    
+                    if let error = error {
+                        self.logger.logError("Local transcription error: \(error.localizedDescription)")
+                        completion(.failure("Local transcription failed: \(error.localizedDescription)", .local))
+                        return
                     }
-                } else {
-                    completion(.failure("No transcription result from local service", .local))
+                    
+                    if let result = result {
+                        let transcription = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        if transcription.isEmpty {
+                            completion(.success("[No speech detected]", .local))
+                        } else {
+                            // Cache the successful transcription
+                            TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
+                            self.logger.logSuccess("✅ Local transcription completed")
+                            completion(.success(transcription, .local))
+                        }
+                    } else {
+                        completion(.failure("No transcription result from local service", .local))
+                    }
                 }
             }
+        } catch {
+            logger.logError("Failed to decrypt audio file for transcription", error: error)
+            completion(.failure("Failed to decrypt audio file: \(error.localizedDescription)", .local))
         }
     }
     
     // MARK: - OpenAI Transcription
+    // use OpenAI's Whisper API for better accuracy
     private func transcribeWithOpenAI(fileURL: URL, completion: @escaping (UnifiedTranscriptionResult) -> Void) {
         logger.logInfo("🤖 Starting OpenAI transcription...")
         
@@ -156,18 +179,33 @@ class TranscriptionService: ObservableObject {
             return
         }
         
-        openAIService.transcribeAudio(fileURL: fileURL) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let transcription):
-                    // Cache the successful transcription
-                    TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
-                    completion(.success(transcription, .openAI))
-                    
-                case .failure(let error):
-                    completion(.failure(error.localizedDescription ?? "OpenAI transcription failed", .openAI))
+        // Decrypt the file data first
+        do {
+            let decryptedData = try AudioEncryptionService.shared.decryptFile(at: fileURL)
+            
+            // Create temporary file for OpenAI
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+            try decryptedData.write(to: tempURL)
+            
+            openAIService.transcribeAudio(fileURL: tempURL) { result in
+                // Clean up temp file
+                try? FileManager.default.removeItem(at: tempURL)
+                
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let transcription):
+                        // Cache the successful transcription
+                        TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
+                        completion(.success(transcription, .openAI))
+                        
+                    case .failure(let error):
+                        completion(.failure(error.localizedDescription, .openAI))
+                    }
                 }
             }
+        } catch {
+            logger.logError("Failed to decrypt audio file for transcription", error: error)
+            completion(.failure("Failed to decrypt audio file: \(error.localizedDescription)", .openAI))
         }
     }
     
@@ -182,34 +220,61 @@ class TranscriptionService: ObservableObject {
             return
         }
         
-        // Try OpenAI first
-        openAIService.transcribeAudio(fileURL: fileURL) { [weak self] result in
-            switch result {
-            case .success(let transcription):
-                DispatchQueue.main.async {
-                    // Cache the successful transcription
-                    TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
-                    self?.logger.logSuccess("✅ OpenAI transcription succeeded")
-                    completion(.success(transcription, .openAI))
-                }
+        // Decrypt the file data first for OpenAI
+        do {
+            let decryptedData = try AudioEncryptionService.shared.decryptFile(at: fileURL)
+            
+            // Create temporary file for OpenAI
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+            try decryptedData.write(to: tempURL)
+            
+            // Try OpenAI first
+            openAIService.transcribeAudio(fileURL: tempURL) { [weak self] result in
+                // Clean up temp file
+                try? FileManager.default.removeItem(at: tempURL)
                 
-            case .failure(let error):
-                // OpenAI failed, try local fallback
-                self?.logger.logWarning("⚠️ OpenAI failed, falling back to local: \(error.localizedDescription ?? "Unknown error")")
-                
-                DispatchQueue.main.async {
-                    self?.transcribeWithLocal(fileURL: fileURL) { fallbackResult in
-                        switch fallbackResult {
-                        case .success(let transcription, _):
-                            self?.logger.logSuccess("✅ Local fallback succeeded")
-                            completion(.success(transcription + " (fallback)", .local))
-                            
-                        case .failure(let fallbackError, _):
-                            self?.logger.logError("❌ Both OpenAI and local transcription failed")
-                            let combinedError = "OpenAI failed: \(error.localizedDescription ?? "Unknown error"), Local fallback failed: \(fallbackError)"
-                            completion(.failure(combinedError, .openAIWithFallback))
+                switch result {
+                case .success(let transcription):
+                    DispatchQueue.main.async {
+                        // Cache the successful transcription
+                        TranscriptManager.shared.saveTranscript(transcription, for: fileURL)
+                        self?.logger.logSuccess("✅ OpenAI transcription succeeded")
+                        completion(.success(transcription, .openAI))
+                    }
+                    
+                case .failure(let error):
+                    // OpenAI failed, try local fallback
+                    self?.logger.logWarning("⚠️ OpenAI failed, falling back to local: \(error.localizedDescription)")
+                    
+                    DispatchQueue.main.async {
+                        self?.transcribeWithLocal(fileURL: fileURL) { fallbackResult in
+                            switch fallbackResult {
+                            case .success(let transcription, _):
+                                self?.logger.logSuccess("✅ Local fallback succeeded")
+                                completion(.success(transcription + " (fallback)", .local))
+                                
+                            case .failure(let fallbackError, _):
+                                self?.logger.logError("❌ Both OpenAI and local transcription failed")
+                                let combinedError = "OpenAI failed: \(error.localizedDescription), Local fallback failed: \(fallbackError)"
+                                completion(.failure(combinedError, .openAIWithFallback))
+                            }
                         }
                     }
+                }
+            }
+        } catch {
+            logger.logError("Failed to decrypt audio file for OpenAI transcription", error: error)
+            // If decryption fails, try local transcription directly
+            transcribeWithLocal(fileURL: fileURL) { fallbackResult in
+                switch fallbackResult {
+                case .success(let transcription, _):
+                    self.logger.logSuccess("✅ Local transcription succeeded after decryption failure")
+                    completion(.success(transcription + " (decryption fallback)", .local))
+                    
+                case .failure(let fallbackError, _):
+                    self.logger.logError("❌ Both decryption and local transcription failed")
+                    let combinedError = "Decryption failed: \(error.localizedDescription), Local fallback failed: \(fallbackError)"
+                    completion(.failure(combinedError, .openAIWithFallback))
                 }
             }
         }
@@ -251,6 +316,38 @@ class TranscriptionService: ObservableObject {
         }
     }
     
+    // MARK: - Debug and Status Methods
+    func getTranscriptionStatus() -> String {
+        var status = "Transcription Service Status:\n"
+        
+        // Check speech recognizer
+        if let speechRecognizer = speechRecognizer {
+            status += "• Speech Recognizer: \(speechRecognizer.isAvailable ? "Available" : "Not Available")\n"
+            status += "• Locale: \(speechRecognizer.locale.identifier)\n"
+        } else {
+            status += "• Speech Recognizer: Not Initialized\n"
+        }
+        
+        // Check OpenAI service
+        let (openAICanUse, openAIReason) = canUseMethod(.openAI)
+        status += "• OpenAI Service: \(openAICanUse ? "Available" : "Not Available")\n"
+        if !openAICanUse {
+            status += "  - Reason: \(openAIReason ?? "Unknown")\n"
+        }
+        
+        // Check current preferred method
+        status += "• Preferred Method: \(preferredMethod.displayName)\n"
+        
+        return status
+    }
+    
+    func testTranscriptionMethods() -> [(TranscriptionMethod, Bool, String)] {
+        return TranscriptionMethod.allCases.map { method in
+            let (canUse, reason) = canUseMethod(method)
+            return (method, canUse, reason ?? "Unknown")
+        }
+    }
+    
     func loadPreferredMethod() {
         if let savedMethod = UserDefaults.standard.string(forKey: "preferredTranscriptionMethod"),
            let method = TranscriptionMethod(rawValue: savedMethod) {
@@ -274,15 +371,15 @@ class TranscriptionService: ObservableObject {
     @MainActor
     func retryPendingTranscriptions() {
         Task {
-            let pendingSegments = await SwiftDataManager.shared.fetchPendingTranscriptions()
+            let pendingSegments = SwiftDataManager.shared.fetchPendingTranscriptions()
             for segment in pendingSegments {
-                await retryTranscription(for: segment, attempt: 1)
+                retryTranscription(for: segment, attempt: 1)
             }
         }
     }
 
     @MainActor
-    private func retryTranscription(for segment: TranscriptionSegment, attempt: Int) async {
+    private func retryTranscription(for segment: TranscriptionSegment, attempt: Int) {
         let maxAttempts = 5
         let delay = pow(2.0, Double(attempt - 1))
         logger.logInfo("Retrying transcription for segment \(segment.segmentIndex), attempt \(attempt)")
@@ -290,16 +387,16 @@ class TranscriptionService: ObservableObject {
             Task { @MainActor in
                 switch result {
                 case .success(let transcription, let method):
-                    await SwiftDataManager.shared.updateSegmentTranscription(segment, transcription: transcription, method: method)
+                    SwiftDataManager.shared.updateSegmentTranscription(segment, transcription: transcription, method: method)
                 case .failure(let error, _):
                     if attempt < maxAttempts {
                         DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
                             Task { @MainActor in
-                                await self.retryTranscription(for: segment, attempt: attempt + 1)
+                                self.retryTranscription(for: segment, attempt: attempt + 1)
                             }
                         }
                     } else {
-                        await SwiftDataManager.shared.markSegmentTranscriptionFailed(segment, error: error)
+                        SwiftDataManager.shared.markSegmentTranscriptionFailed(segment, error: error)
                     }
                 }
             }

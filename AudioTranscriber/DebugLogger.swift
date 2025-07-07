@@ -1,6 +1,7 @@
 import Foundation
 import os.log
 
+// logging utility - writes to both console and file for debugging
 class DebugLogger {
     static let shared = DebugLogger()
     private let logger = OSLog(subsystem: "com.audiotranscriber", category: "debug")
@@ -15,6 +16,7 @@ class DebugLogger {
         log("📁 Log file path: \(logFileURL.path)")
     }
     
+    // main logging function - writes everywhere
     func log(_ message: String, level: OSLogType = .default, function: String = #function, file: String = #file, line: Int = #line) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
         let timestamp = DateFormatter.logFormatter.string(from: Date())
@@ -30,6 +32,7 @@ class DebugLogger {
         print(logMessage)
     }
     
+    // log errors with full details
     func logError(_ message: String, error: Error? = nil, function: String = #function, file: String = #file, line: Int = #line) {
         var fullMessage = "❌ ERROR: \(message)"
         if let error = error {
@@ -44,18 +47,22 @@ class DebugLogger {
         log(fullMessage, level: .error, function: function, file: file, line: line)
     }
     
+    // log warnings
     func logWarning(_ message: String, function: String = #function, file: String = #file, line: Int = #line) {
         log("⚠️ WARNING: \(message)", level: .info, function: function, file: file, line: line)
     }
     
+    // log info messages
     func logInfo(_ message: String, function: String = #function, file: String = #file, line: Int = #line) {
         log("ℹ️ INFO: \(message)", level: .info, function: function, file: file, line: line)
     }
     
+    // log success messages
     func logSuccess(_ message: String, function: String = #function, file: String = #file, line: Int = #line) {
         log("✅ SUCCESS: \(message)", level: .default, function: function, file: file, line: line)
     }
     
+    // convert log level to string
     private func levelString(_ level: OSLogType) -> String {
         switch level {
         case .error: return "ERROR"
@@ -66,6 +73,7 @@ class DebugLogger {
         }
     }
     
+    // write log message to file
     private func writeToFile(_ message: String) {
         let messageWithNewline = message + "\n"
         
@@ -84,6 +92,7 @@ class DebugLogger {
         }
     }
     
+    // get all log contents for debugging
     func getLogFileContents() -> String {
         guard let data = try? Data(contentsOf: logFileURL),
               let contents = String(data: data, encoding: .utf8) else {
@@ -92,11 +101,13 @@ class DebugLogger {
         return contents
     }
     
+    // clear the log file
     func clearLog() {
         try? FileManager.default.removeItem(at: logFileURL)
         log("🧹 Log file cleared")
     }
     
+    // get log file path
     func getLogFilePath() -> String {
         return logFileURL.path
     }

@@ -1,6 +1,7 @@
 import Foundation
 
 // MARK: - OpenAI API Response Models
+// models for OpenAI's API responses
 struct WhisperResponse: Codable {
     let text: String
 }
@@ -16,11 +17,13 @@ struct WhisperErrorDetail: Codable {
 }
 
 // MARK: - Transcription Result
+// result of transcription attempt
 enum TranscriptionResult {
     case success(String)
     case failure(TranscriptionError)
 }
 
+// different types of errors that can happen
 enum TranscriptionError: Error, LocalizedError {
     case noAPIKey
     case networkError(Error)
@@ -54,6 +57,7 @@ enum TranscriptionError: Error, LocalizedError {
 }
 
 // MARK: - OpenAI Whisper Service
+// handles all OpenAI API calls for transcription
 class OpenAIWhisperService {
     static let shared = OpenAIWhisperService()
     
@@ -64,6 +68,7 @@ class OpenAIWhisperService {
     private init() {}
     
     // MARK: - Main Transcription Method
+    // main entry point - sends audio to OpenAI for transcription
     func transcribeAudio(fileURL: URL, completion: @escaping (TranscriptionResult) -> Void) {
         logger.logInfo("🤖 Starting OpenAI Whisper transcription for: \(fileURL.lastPathComponent)")
         
@@ -78,6 +83,7 @@ class OpenAIWhisperService {
     }
     
     // MARK: - Retry Logic with Exponential Backoff
+    // retry failed requests with increasing delays
     private func transcribeWithRetry(fileURL: URL, apiKey: String, attempt: Int, completion: @escaping (TranscriptionResult) -> Void) {
         logger.logInfo("🔄 Transcription attempt \(attempt)/\(maxRetries) for: \(fileURL.lastPathComponent)")
         
@@ -107,6 +113,7 @@ class OpenAIWhisperService {
     }
     
     // MARK: - Core Transcription Request
+    // actually make the API call to OpenAI
     private func performTranscription(fileURL: URL, apiKey: String, completion: @escaping (TranscriptionResult) -> Void) {
         // Verify file exists and is readable
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -182,6 +189,7 @@ class OpenAIWhisperService {
     }
     
     // MARK: - Response Parsing
+    // parse successful response from OpenAI
     private func parseSuccessResponse(data: Data, completion: @escaping (TranscriptionResult) -> Void) {
         do {
             let response = try JSONDecoder().decode(WhisperResponse.self, from: data)

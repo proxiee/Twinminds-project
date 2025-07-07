@@ -1,19 +1,43 @@
 import SwiftUI
 import Speech
 
+// main screen - where all the recording magic happens
 struct ContentView: View {
+    // core audio service that does all the heavy lifting
     @StateObject private var audioService = AudioService()
     @State private var recordedFiles: [URL] = []
     @State private var showingRecordings = false
     @State private var showingSettings = false
     @State private var showingSessions = false
     @State private var showingHelp = false
+    @State private var showingAudioQuality = false
+    @State private var showingDebug = false
     
     private let logger = DebugLogger.shared
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
+        ZStack {
+            // Simple black to ash gradient background
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.black,
+                    Color(red: 0.15, green: 0.15, blue: 0.2)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Centered AudioTranscriber heading
+                    Text("AudioTranscriber")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.top, 20)
+                        .padding(.bottom, 10)
+                
+                // show interruption status if something went wrong
                 if let status = audioService.interruptionStatus {
                     Text(status)
                         .font(.headline)
@@ -24,22 +48,33 @@ struct ContentView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .zIndex(2)
                 }
+                
+                // Network status indicator
+                HStack {
+                    Spacer()
+                    NetworkStatusView()
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
                 VStack(spacing: 20) {
-                    // Permission status
+                    // Permission status - nag users if they haven't given permissions
                     if audioService.permissionStatus != .authorized || !audioService.microphonePermissionGranted {
                         VStack {
                             Text("Permissions Required")
                                 .font(.headline)
-                                .foregroundColor(.red)
+                                .foregroundColor(.white)
                             
                             Text(permissionStatusText)
                                 .font(.caption)
+                                .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
                                 .padding()
                             
                             if !audioService.microphonePermissionGranted {
                                 Text("Microphone access is also required for recording.")
                                     .font(.caption)
+                                    .foregroundColor(.white)
                                     .multilineTextAlignment(.center)
                                     .padding(.top, 4)
                             }
@@ -54,12 +89,28 @@ struct ContentView: View {
                     // Recording mode toggle
                     SegmentationModeToggle(audioService: audioService)
                     
+                    // Noise Reduction toggle (custom audio processing)
+                    HStack {
+                        Image(systemName: "waveform.path.ecg")
+                            .foregroundColor(.purple)
+                        Toggle("Noise Reduction", isOn: $audioService.noiseReductionEnabled)
+                            .toggleStyle(SwitchToggleStyle(tint: .purple))
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 4)
+                    .background(Color.gray.opacity(0.15))
+                    .cornerRadius(10)
+                    
                     // Segmentation progress (shown during recording)
                     SegmentationProgressView(audioService: audioService)
                     
                     // Recording button and audio visualization
                     VStack(spacing: 15) {
                         HStack(spacing: 30) {
+                            // pause/resume button
                             Button(action: {
                                 if audioService.isRecording {
                                     if audioService.isPaused {
@@ -78,6 +129,7 @@ struct ContentView: View {
                             .accessibilityHint("Double tap to pause or resume the current recording.")
                             .accessibilityValue(audioService.isPaused ? "Paused" : "Recording")
                             
+                            // main record/stop button
                             Button(action: {
                                 if audioService.isRecording {
                                     audioService.stopRecording()
@@ -96,6 +148,7 @@ struct ContentView: View {
                         }
                         Text(recordingStatusText)
                             .font(.headline)
+                            .foregroundColor(.white)
                             .padding(.top, 5)
                         
                         // Background recording indicator
@@ -115,44 +168,100 @@ struct ContentView: View {
                             VStack(spacing: 8) {
                                 Text("Audio Level")
                                     .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.white)
                                 
                                 AudioLevelView(audioService: audioService)
                                 
                                 Text(String(format: "%.1f%%", audioService.audioLevel * 100))
                                     .font(.caption2)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.white)
                             }
                             .padding(.horizontal)
                         }
                     }
                     
-                    // Real-time transcription
-                    if audioService.isRecording || !audioService.transcribedText.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("Transcription:")
-                                    .font(.headline)
-                                if audioService.isTranscribing {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
+                    // Real-time transcription - more prominent and always visible
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "text.bubble")
+                                .foregroundColor(.cyan)
+                                .font(.title3)
+                            Text("Live Transcription")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            if audioService.isTranscribing {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .cyan))
+                            }
+                            Spacer()
+                            if audioService.isRecording {
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 8, height: 8)
+                                        .scaleEffect(1.2)
+                                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: audioService.isRecording)
+                                    Text("LIVE")
+                                        .font(.caption2)
+                                        .foregroundColor(.red)
+                                        .fontWeight(.bold)
                                 }
-                                Spacer()
                             }
-                            
-                            ScrollView {
-                                Text(audioService.transcribedText.isEmpty ? "Say something..." : audioService.transcribedText)
-                                    .font(.body)
-                                    .foregroundColor(audioService.transcribedText.isEmpty ? .gray : .primary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding()
-                                    .background(Color.gray.opacity(0.1))
-                                    .cornerRadius(8)
-                            }
-                            .frame(maxHeight: 150)
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, 4)
+                        
+                        // Scrollable transcription area
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    if audioService.transcribedText.isEmpty {
+                                        HStack {
+                                            Spacer()
+                                            VStack(spacing: 8) {
+                                                Image(systemName: "mic.fill")
+                                                    .font(.title2)
+                                                    .foregroundColor(.white.opacity(0.6))
+                                                Text("Start speaking to see live transcription...")
+                                                    .font(.body)
+                                                    .foregroundColor(.white)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                            Spacer()
+                                        }
+                                        .frame(minHeight: 120)
+                                        .padding()
+                                        .background(Color.white.opacity(0.05))
+                                        .cornerRadius(12)
+                                    } else {
+                                        Text(audioService.transcribedText)
+                                            .font(.body)
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding()
+                                            .background(Color.white.opacity(0.1))
+                                            .cornerRadius(12)
+                                            .id("transcriptionText")
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 200)
+                            .onChange(of: audioService.transcribedText) { _ in
+                                // Auto-scroll to bottom when new text is added
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    proxy.scrollTo("transcriptionText", anchor: .bottom)
+                                }
+                            }
+                        }
                     }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.2))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                    )
                     
                     Spacer()
                     
@@ -161,9 +270,10 @@ struct ContentView: View {
                         VStack {
                             Text("Initialization Error")
                                 .font(.headline)
-                                .foregroundColor(.red)
+                                .foregroundColor(.white)
                             Text(error)
                                 .font(.caption)
+                                .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
                                 .padding()
                         }
@@ -173,22 +283,22 @@ struct ContentView: View {
                     }
                     
                     VStack(spacing: 12) {
-                        // Main actions row
-                        HStack(spacing: 12) {
+                        // Main actions row - smaller buttons
+                        HStack(spacing: 8) {
                             Button(action: {
                                 loadRecordings()
                                 showingRecordings = true
                             }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "list.bullet")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Recordings")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.green)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Recordings List")
                             .accessibilityHint("Double tap to view all recorded audio files.")
@@ -196,16 +306,16 @@ struct ContentView: View {
                             Button(action: {
                                 showingSessions = true
                             }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "rectangle.stack")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Sessions")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.blue)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Sessions List")
                             .accessibilityHint("Double tap to view all recording sessions.")
@@ -213,16 +323,16 @@ struct ContentView: View {
                             Button(action: {
                                 showingSettings = true
                             }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "gearshape")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Settings")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.gray)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Settings")
                             .accessibilityHint("Double tap to view app settings and transcription options.")
@@ -230,36 +340,60 @@ struct ContentView: View {
                             Button(action: {
                                 showingHelp = true
                             }) {
-                                VStack {
+                                VStack(spacing: 2) {
                                     Image(systemName: "questionmark.circle")
-                                        .font(.title2)
+                                        .font(.title3)
                                     Text("Help")
-                                        .font(.caption)
+                                        .font(.caption2)
                                 }
                                 .foregroundColor(.white)
-                                .frame(width: 75, height: 60)
+                                .frame(width: 60, height: 45)
                                 .background(Color.purple)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .accessibilityLabel("Show Help and Onboarding")
                             .accessibilityHint("Double tap to view help and tips for using the app.")
+                            
+                            Button(action: { showingAudioQuality = true }) {
+                                VStack(spacing: 2) {
+                                    Image(systemName: "waveform")
+                                        .font(.title3)
+                                    Text("Quality")
+                                        .font(.caption2)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 60, height: 45)
+                                .background(Color.orange)
+                                .cornerRadius(8)
+                            }
+                            .accessibilityLabel("Show Audio Quality Settings")
+                            .accessibilityHint("Double tap to configure audio recording quality and format.")
+                            
+                            Button(action: { showingDebug = true }) {
+                                VStack(spacing: 2) {
+                                    Image(systemName: "ladybug")
+                                        .font(.title3)
+                                    Text("Debug")
+                                        .font(.caption2)
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 60, height: 45)
+                                .background(Color.red)
+                                .cornerRadius(8)
+                            }
+                            .accessibilityLabel("Show Debug Information")
+                            .accessibilityHint("Double tap to view transcription debug information and test methods.")
                         }
-                        
-                        Text("Files: AudioTranscriber_Recording_[date].caf + .mp3/.m4a")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
                     }
                 }
             }
             .padding()
-            .navigationTitle("Audio Transcriber")
-            .onAppear {
-                AudioTranscriberApp.registerTerminationObserver(audioService: audioService)
-                audioService.checkForPartialRecordingsAndRecover()
-                loadRecordings()
-            }
+        }
+        }
+        .onAppear {
+            AudioTranscriberApp.registerTerminationObserver(audioService: audioService)
+            audioService.checkForPartialRecordingsAndRecover()
+            loadRecordings()
         }
         .sheet(isPresented: $showingRecordings) {
             #if os(iOS)
@@ -289,6 +423,12 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingHelp) {
             OnboardingHelpView()
+        }
+        .sheet(isPresented: $showingAudioQuality) {
+            AudioQualitySettingsView()
+        }
+        .sheet(isPresented: $showingDebug) {
+            TranscriptionDebugView()
         }
     }
     

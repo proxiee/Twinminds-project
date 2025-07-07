@@ -1,5 +1,6 @@
 import Foundation
 
+// manages cached transcripts for audio files
 enum TranscriptStatus {
     case notGenerated
     case generating
@@ -60,6 +61,7 @@ class TranscriptManager: ObservableObject {
     
     // MARK: - Private Methods
     
+    // make a unique key for each file
     private func generateKey(for url: URL) -> String {
         // Use filename and file size as key to uniquely identify files
         let fileName = url.lastPathComponent
@@ -67,6 +69,7 @@ class TranscriptManager: ObservableObject {
         return "\(fileName)_\(fileSize)"
     }
     
+    // get file size for key
     private func getFileSize(url: URL) -> String {
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
@@ -79,6 +82,7 @@ class TranscriptManager: ObservableObject {
         return "0"
     }
     
+    // load transcripts from user defaults
     private func loadTranscripts() {
         if let data = userDefaults.data(forKey: transcriptsKey),
            let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
@@ -86,6 +90,7 @@ class TranscriptManager: ObservableObject {
         }
     }
     
+    // save transcripts to user defaults
     private func saveTranscripts() {
         if let encoded = try? JSONEncoder().encode(transcriptCache) {
             userDefaults.set(encoded, forKey: transcriptsKey)

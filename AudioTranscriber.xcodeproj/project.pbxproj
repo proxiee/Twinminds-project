@@ -67,11 +67,21 @@
 			);
 			target = 926C0D7D2E17940F00E5DFF1 /* AudioTranscriberWidgetExtension */;
 		};
+		926C0F792E1A88FF00E5DFF1 /* Exceptions for "AudioTranscriber" folder in "AudioTranscriber" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 6A59819A2E151BED0082227F /* AudioTranscriber */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6A59819D2E151BED0082227F /* AudioTranscriber */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				926C0F792E1A88FF00E5DFF1 /* Exceptions for "AudioTranscriber" folder in "AudioTranscriber" target */,
+			);
 			path = AudioTranscriber;
 			sourceTree = "<group>";
 		};
@@ -440,6 +450,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
+				NEW_SETTING = "";
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -495,6 +506,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				NEW_SETTING = "";
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -507,8 +519,10 @@
 				CODE_SIGN_ENTITLEMENTS = AudioTranscriber/AudioTranscriber.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AudioTranscriber/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires the permission of the microphone to transcribe";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to transcribe recorded audio into text.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -530,7 +544,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Yashwanth.AudioTranscriber;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Yashwanth.AudioTranscriber;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = iphoneos;
@@ -550,8 +564,10 @@
 				CODE_SIGN_ENTITLEMENTS = AudioTranscriber/AudioTranscriber.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AudioTranscriber/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires the permission of the microphone to transcribe";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to transcribe recorded audio into text.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -573,7 +589,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Yashwanth.AudioTranscriber;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Yashwanth.AudioTranscriber;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = iphoneos;
@@ -678,6 +694,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 62MRDCTVCY;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AudioTranscriberWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = AudioTranscriberWidget;
@@ -689,7 +706,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Yashwanth.AudioTranscriber.AudioTranscriberWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Yashwanth.AudioTranscriber.AudioTranscriberWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -706,6 +723,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 62MRDCTVCY;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AudioTranscriberWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = AudioTranscriberWidget;
@@ -717,7 +735,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Yashwanth.AudioTranscriber.AudioTranscriberWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Yashwanth.AudioTranscriber.AudioTranscriberWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
